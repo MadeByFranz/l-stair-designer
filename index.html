@@ -1,0 +1,2653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>L-Stair Designer</title>
+<meta name="description" content="L-shaped stair with a landing: plan and elevation drawings, 3D model, Finnish rules check (YMa 1007/2017), PDF / DXF / SVG / OBJ export.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow+Semi+Condensed:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #eceee9;
+  --panel: #f7f8f5;
+  --sheet: #ffffff;
+  --ink: #1a1e21;
+  --ink-2: #4f575c;
+  --ink-3: #737b80;
+  --rule: #c3c8c2;
+  --rule-2: #dde1dc;
+  --frame: #1a1e21;
+  --accent: #1d5bd6;
+  --accent-ink: #ffffff;
+  --accent-soft: #dfe8fb;
+  --pass: #137631;
+  --pass-bg: #e2f0e5;
+  --warn: #a65500;
+  --warn-bg: #faecd8;
+  --fail: #c4271c;
+  --fail-bg: #fae3df;
+  --info: #646c71;
+  --info-bg: #e7e9e6;
+  --shadow: 0 6px 24px rgba(20, 26, 30, 0.16);
+  --f-ui: "Barlow Semi Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-fig: "Barlow Condensed", "Barlow Semi Condensed", "Arial Narrow", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101315; --panel: #161a1d; --sheet: #1b1f24; --ink: #e2e5e2; --ink-2: #a5adaf; --ink-3: #848c8f;
+    --rule: #333a3e; --rule-2: #252b2f; --frame: #c9cfcc; --accent: #7aa6ff; --accent-ink: #0b1220; --accent-soft: #1f2c47;
+    --pass: #5cc879; --pass-bg: #18301f; --warn: #f2a64c; --warn-bg: #352713; --fail: #ff7468; --fail-bg: #3a1916;
+    --info: #9aa2a5; --info-bg: #23292c; --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #101315; --panel: #161a1d; --sheet: #1b1f24; --ink: #e2e5e2; --ink-2: #a5adaf; --ink-3: #848c8f;
+  --rule: #333a3e; --rule-2: #252b2f; --frame: #c9cfcc; --accent: #7aa6ff; --accent-ink: #0b1220; --accent-soft: #1f2c47;
+  --pass: #5cc879; --pass-bg: #18301f; --warn: #f2a64c; --warn-bg: #352713; --fail: #ff7468; --fail-bg: #3a1916;
+  --info: #9aa2a5; --info-bg: #23292c; --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 14.5px/1.4 var(--f-ui);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+h2, h3 { text-wrap: balance; }
+
+/* ---------------------------------------------------------- layout */
+.app {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 300px minmax(0, 1fr) 340px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "tb tb tb" "side main rules";
+}
+.tb { grid-area: tb; }
+.side { grid-area: side; }
+.main { grid-area: main; }
+.rules { grid-area: rules; }
+
+/* ---------------------------------------------- title-block header */
+.tb {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.7fr) repeat(3, minmax(118px, 1fr)) minmax(176px, 1.25fr) auto;
+  background: var(--panel);
+  border-bottom: 2px solid var(--frame);
+}
+.tb-cell {
+  min-width: 0;
+  padding: 7px 14px 8px;
+  border-left: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  text-align: left;
+  background: none;
+  border-top: 0; border-right: 0; border-bottom: 0;
+}
+.tb-cell:first-child { border-left: 0; padding-left: 16px; }
+.cap { font-size: 12px; color: var(--ink-3); letter-spacing: 0.01em; }
+.val { font: 600 21px/1.15 var(--f-fig); letter-spacing: 0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-name .val { font: 600 19px/1.2 var(--f-ui); }
+.tb-cell[data-state="bad"] .val { color: var(--fail); }
+.tb-verdict { cursor: pointer; }
+.tb-verdict:hover .sub { text-decoration: underline; }
+.v-fail { background: var(--fail-bg); }
+.v-fail .val { color: var(--fail); }
+.v-warn { background: var(--warn-bg); }
+.v-warn .val { color: var(--warn); }
+.v-pass { background: var(--pass-bg); }
+.v-pass .val { color: var(--pass); }
+.tb-actions { flex-direction: row; align-items: center; padding: 8px 14px; }
+
+.menu { position: relative; }
+.menu > summary {
+  list-style: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 16px;
+  background: var(--accent); color: var(--accent-ink);
+  border-radius: 3px; font-weight: 600; cursor: pointer; user-select: none;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: ""; width: 7px; height: 7px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; transform: translateY(-2px) rotate(45deg); }
+.menu-list {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  width: 300px; padding: 6px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow);
+}
+.menu-list button {
+  display: grid; grid-template-columns: 1fr auto; gap: 0 12px; align-items: baseline;
+  width: 100%; padding: 7px 10px; border: 0; border-radius: 3px; background: none; text-align: left;
+}
+.menu-list button:hover, .menu-list button:focus-visible { background: var(--accent-soft); }
+.menu-list b { font-weight: 600; }
+.menu-list small { color: var(--ink-3); font-size: 12px; }
+.menu-list .fmt { font-size: 12px; color: var(--ink-2); }
+.menu-list hr { border: 0; border-top: 1px solid var(--rule-2); margin: 5px 4px; }
+.menu-list button.busy { opacity: 0.55; cursor: progress; }
+
+/* ---------------------------------------------------------- sidebar */
+.side {
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+  overflow: auto;
+  min-height: 0;
+  padding-block: 14px 24px;
+}
+.side-top { padding-inline: 16px; display: grid; gap: 10px; padding-bottom: 12px; }
+.presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.preset {
+  display: grid; gap: 1px; padding: 7px 9px; text-align: left;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+}
+.preset b { font-weight: 600; }
+.preset small { color: var(--ink-3); font-size: 12px; line-height: 1.25; }
+.preset[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn {
+  height: 30px; padding: 0 11px;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+  font-weight: 500; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.busy { opacity: 0.6; cursor: progress; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.conv { display: grid; gap: 3px; padding: 8px 10px 10px; border: 1px solid var(--rule-2); border-radius: 3px; background: var(--sheet); }
+.conv .crow { display: block; }
+.conv .crow:not(:first-child) { margin-top: 5px; }
+.conv .cin { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 8px; align-items: center; }
+.conv input { width: 100%; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--panel); }
+.conv output { font: 600 15px/1.2 var(--f-fig); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.form-msg { margin: 0 16px 8px; display: grid; gap: 4px; }
+.form-msg p { margin: 0; padding: 6px 9px; border-radius: 3px; font-size: 13px; }
+.m-fail { background: var(--fail-bg); color: var(--fail); }
+.m-warn { background: var(--warn-bg); color: var(--warn); }
+
+.grp { border-top: 1px solid var(--rule-2); }
+.grp > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; font-weight: 600; font-size: 15px;
+}
+.grp > summary::-webkit-details-marker { display: none; }
+.grp > summary::after { content: ""; width: 7px; height: 7px; border: solid var(--ink-3); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform 0.15s; }
+.grp[open] > summary::after { transform: translateY(-2px) rotate(45deg); }
+.grp.adv > summary { color: var(--ink-2); font-weight: 500; }
+.grp-body { display: grid; gap: 9px; padding: 0 16px 14px; }
+.fld { display: grid; grid-template-columns: minmax(0, 1fr) 118px; align-items: center; gap: 2px 10px; }
+.fld .lab { color: var(--ink); line-height: 1.2; }
+.fld .code { font-weight: 600; margin-left: 3px; }
+.fld .hint { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+.fld.off { opacity: 0.42; }
+.fld-text, .fld-select { grid-template-columns: minmax(0, 1fr); }
+.fld-select .ctl, .fld-text .ctl { display: block; }
+.ctl.num { position: relative; display: block; }
+.ctl input[type="number"], .ctl input[type="text"], .ctl select {
+  width: 100%; height: 30px;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 3px;
+  padding: 0 8px;
+}
+.ctl input[type="number"] { text-align: right; padding-right: 34px; -moz-appearance: textfield; }
+.ctl input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+.ctl .unit { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--ink-3); pointer-events: none; }
+.fld.bad input { border-color: var(--fail); background: var(--fail-bg); }
+.fld-bool { grid-template-columns: minmax(0, 1fr) auto; }
+.sw {
+  appearance: none; -webkit-appearance: none; margin: 0;
+  width: 36px; height: 20px; border-radius: 10px;
+  background: var(--rule); position: relative; cursor: pointer; transition: background 0.15s;
+}
+.sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--sheet); transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.sw:checked { background: var(--accent); }
+.sw:checked::after { transform: translateX(16px); }
+.side-foot { padding: 14px 16px 0; font-size: 12px; color: var(--ink-3); border-top: 1px solid var(--rule-2); }
+.side-foot p { margin: 0 0 6px; }
+
+/* ------------------------------------------------------------- main */
+.main { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+.tabs {
+  display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin;
+  padding: 0 10px; background: var(--panel); border-bottom: 1px solid var(--rule);
+}
+.tab {
+  flex: none; position: relative;
+  height: 40px; padding: 0 12px;
+  background: none; border: 0; color: var(--ink-2); font-weight: 500;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2.5px; background: var(--accent); }
+.tab .cnt:not(:empty) { margin-left: 6px; padding: 0 5px; border-radius: 8px; background: var(--fail); color: #fff; font-size: 11px; font-weight: 600; }
+.narrow-only { display: none; }
+
+.stage { position: relative; min-height: 0; overflow: hidden; background: var(--sheet); }
+.stage-host { position: absolute; inset: 0; }
+.cv { display: block; touch-action: none; cursor: grab; outline: none; }
+.cv:active { cursor: grabbing; }
+.cv:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.gl { display: block; touch-action: none; }
+.doc-host { overflow: auto; background: var(--ground); }
+body.has-error .stage-host { opacity: 0.3; filter: grayscale(1); }
+.stage-error {
+  position: absolute; z-index: 5; left: 12px; right: 12px; top: 56px;
+  padding: 10px 14px; border-radius: 3px; background: var(--fail-bg); color: var(--fail);
+  border: 1px solid var(--fail);
+}
+.bar { position: absolute; z-index: 4; top: 10px; right: 10px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 20px); }
+.bar .btn { background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.bar .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.bar .sep { width: 1px; background: var(--rule); margin: 4px 2px; }
+.coords { position: absolute; z-index: 4; left: 12px; bottom: 9px; font-size: 12px; color: var(--ink-3); pointer-events: none; white-space: pre; }
+.gl-msg { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; color: var(--ink-2); padding: 20px; text-align: center; }
+.howto { position: absolute; z-index: 4; right: 12px; bottom: 9px; font-size: 12px; color: var(--ink-3); pointer-events: none; }
+
+/* ---------------------------------------------------------- rules */
+.rules { background: var(--panel); border-left: 1px solid var(--rule); overflow: auto; min-height: 0; padding: 14px 16px 24px; }
+.rules > h2 { margin: 0 0 8px; font-size: 17px; }
+.verdict { margin: 0 0 10px; padding: 8px 11px; border-radius: 3px; }
+.chks { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 1px; background: var(--rule-2); border: 1px solid var(--rule-2); }
+.chk {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 1px 10px; align-items: baseline;
+  padding: 7px 10px; background: var(--panel);
+}
+.badge { font-size: 11.5px; font-weight: 600; text-align: center; padding: 1px 0; border-radius: 2px; }
+.s-pass .badge { background: var(--pass-bg); color: var(--pass); }
+.s-fail .badge { background: var(--fail); color: #fff; }
+.s-warn .badge { background: var(--warn-bg); color: var(--warn); }
+.s-info .badge { background: var(--info-bg); color: var(--info); }
+.s-fail { background: var(--fail-bg); }
+.chk .rule { font-weight: 500; line-height: 1.25; }
+.chk .vl { display: grid; justify-items: end; line-height: 1.2; text-align: right; max-width: 10em; }
+.chk .v { font: 600 15px/1.2 var(--f-fig); }
+.s-fail .v { color: var(--fail); }
+.chk .l { font-size: 12px; color: var(--ink-3); }
+.chk .note, .chk .ref { grid-column: 2 / -1; font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+.chk .ref { font-size: 11.5px; }
+.suggest { margin: 0 0 14px; padding: 9px 11px; border: 1px solid var(--accent); border-radius: 3px; background: var(--accent-soft); display: grid; gap: 6px; }
+.suggest p { margin: 0; }
+.suggest .btn { justify-self: start; }
+.rules h3, .doc h3 { margin: 16px 0 6px; font-size: 14.5px; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 4px 8px; border-bottom: 1px solid var(--rule-2); text-align: left; vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); border-bottom-color: var(--rule); white-space: nowrap; }
+td.n, th.n { text-align: right; }
+tr.landing td { font-weight: 600; }
+.fine { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+.flash { animation: flash 1s ease-out; }
+@keyframes flash { from { box-shadow: inset 0 0 0 999px var(--accent-soft); } to { box-shadow: inset 0 0 0 999px transparent; } }
+
+/* ------------------------------------------------------------ docs */
+.doc { max-width: 1120px; margin: 0 auto; padding: 18px 20px 40px; }
+.doc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 10px; }
+.doc-head:first-child { margin-top: 0; }
+.doc h2 { margin: 0; font-size: 22px; font-family: var(--f-fig); font-weight: 600; }
+.doc table { background: var(--panel); }
+.cut td:last-child { color: var(--ink-2); min-width: 220px; }
+.cut td:first-child { white-space: nowrap; }
+.rules-doc .chks { max-width: 760px; }
+
+.toast {
+  position: fixed; z-index: 50; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 12px); opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  background: var(--ink); color: var(--panel); padding: 9px 16px; border-radius: 4px; box-shadow: var(--shadow);
+  max-width: calc(100% - 32px);
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ------------------------------------------------------ responsive */
+@media (max-width: 1279px) {
+  .app { grid-template-columns: 292px minmax(0, 1fr); grid-template-areas: "tb tb" "side main"; }
+  .rules { display: none; }
+  .narrow-only { display: inline-block; }
+  .tb { grid-template-columns: minmax(200px, 1.5fr) repeat(3, minmax(104px, 1fr)) minmax(160px, 1.2fr) auto; }
+}
+@media (max-width: 899px) {
+  html, body { height: auto; }
+  .app { display: flex; flex-direction: column; height: auto; }
+  .tb {
+    order: 0;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "name act" "rise going" "pitch verdict";
+  }
+  .tb-name { grid-area: name; }
+  .tb-actions { grid-area: act; justify-content: flex-end; border-left: 0; }
+  #tbRise { grid-area: rise; }
+  #tbGoing { grid-area: going; }
+  #tbPitch { grid-area: pitch; }
+  .tb-verdict { grid-area: verdict; }
+  #tbRise, #tbGoing, #tbPitch, .tb-verdict { border-top: 1px solid var(--rule); }
+  #tbRise, #tbPitch { border-left: 0; padding-left: 16px; }
+  .main { order: 1; display: block; }
+  .side { order: 2; border-right: 0; border-top: 1px solid var(--rule); overflow: visible; }
+  .rules { order: 3; display: block; border-left: 0; border-top: 1px solid var(--rule); overflow: visible; }
+  .tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; }
+  .stage { height: 64vh; height: 64svh; min-height: 340px; }
+  .narrow-only { display: none; }
+  .howto { display: none; }
+  .menu-list { right: 0; left: auto; width: min(300px, calc(100vw - 32px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash { animation: none; }
+  .toast, .sw, .sw::after, .grp > summary::after { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="tb">
+    <div class="tb-cell tb-name">
+      <span class="cap">L-stair designer</span>
+      <span class="val" id="tbProject">Stair</span>
+      <span class="sub" id="tbProjectSub"></span>
+    </div>
+    <div class="tb-cell" id="tbRise"><span class="cap">Rise</span><span class="val">–</span><span class="sub"></span></div>
+    <div class="tb-cell" id="tbGoing"><span class="cap">Going</span><span class="val">–</span><span class="sub"></span></div>
+    <div class="tb-cell" id="tbPitch"><span class="cap">Pitch</span><span class="val">–</span><span class="sub"></span></div>
+    <button class="tb-cell tb-verdict" id="tbVerdict" type="button" aria-label="Rules check – show details">
+      <span class="cap">Finnish rules</span><span class="val" id="tbVerdictVal">–</span><span class="sub" id="tbVerdictSub"></span>
+    </button>
+    <div class="tb-cell tb-actions">
+      <details class="menu" id="exportMenu">
+        <summary>Export</summary>
+        <div class="menu-list" role="menu">
+          <button type="button" role="menuitem" data-export="pdf"><b>Drawing sheet</b><span class="fmt">PDF</span><small>A3: plan, elevation, key figures, title block</small></button>
+          <button type="button" role="menuitem" data-export="dxf"><b>Plan + elevation</b><span class="fmt">DXF</span><small>1:1 mm, layers, opens in any CAD</small></button>
+          <button type="button" role="menuitem" data-export="svg"><b>Current drawing</b><span class="fmt">SVG</span><small>vector, prints at 1:20</small></button>
+          <button type="button" role="menuitem" data-export="png"><b>Current view</b><span class="fmt">PNG</span><small>image of the open tab, 3D included</small></button>
+          <hr>
+          <button type="button" role="menuitem" data-export="obj"><b>3D model</b><span class="fmt">OBJ</span><small>mm, Y up – Blender, SketchUp, Rhino, Revit</small></button>
+          <button type="button" role="menuitem" data-export="csv"><b>Cut list</b><span class="fmt">CSV</span></button>
+          <hr>
+          <button type="button" role="menuitem" data-export="json"><b>Parameters</b><span class="fmt">JSON</span><small>open it again with “Open…”</small></button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <aside class="side" aria-label="Stair inputs">
+    <div class="side-top">
+      <div class="presets" role="group" aria-label="Start from">
+        <button class="preset" type="button" data-preset="example" aria-pressed="false"><b>Example</b><small>steep, 9 stairs</small></button>
+        <button class="preset" type="button" data-preset="dwelling" aria-pressed="false"><b>Dwelling</b><small>190 / 250</small></button>
+        <button class="preset" type="button" data-preset="loft" aria-pressed="false"><b>Loft</b><small>220 / 220</small></button>
+      </div>
+      <div class="tools">
+        <button class="btn" id="undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+        <button class="btn" id="redo" type="button" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        <button class="btn" id="importBtn" type="button">Open…</button>
+        <button class="btn" id="saveBtn" type="button">Save</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="conv" aria-label="Unit converter">
+        <label class="crow" for="convIn"><span class="cap">Imperial to metric: in</span></label>
+        <div class="cin"><input id="convIn" type="text" inputmode="decimal" placeholder="93 3/4 or 7' 9&quot;" autocomplete="off"><output id="convInOut" for="convIn" aria-live="polite">–</output></div>
+        <label class="crow" for="convMm"><span class="cap">Metric to imperial: mm</span></label>
+        <div class="cin"><input id="convMm" type="text" inputmode="decimal" placeholder="2380" autocomplete="off"><output id="convMmOut" for="convMm" aria-live="polite">–</output></div>
+      </div>
+    </div>
+    <div class="form-msg" id="formMsg" hidden></div>
+    <div id="form"></div>
+    <div class="side-foot">
+      <p>Dimensions in mm. The landing counts as a step: C stairs in total, P of them up to and including the landing.</p>
+      <p>Rules: YMa 1007/2017 (Finland). Your last design is kept in this browser.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views"></nav>
+    <section class="stage" id="stage">
+      <div class="stage-host" id="cvHost"></div>
+      <div class="stage-host" id="glHost" hidden><div class="gl-msg" id="glMsg" hidden></div></div>
+      <div class="stage-host doc-host" id="docHost" hidden></div>
+      <div class="bar" id="cvBar">
+        <button class="btn" id="palBtn" type="button" title="Drawing background">Dark</button>
+        <button class="btn" id="fitBtn" type="button" title="Fit (double-click, or 0)">Fit</button>
+      </div>
+      <div class="bar" id="glBar" hidden>
+        <button class="btn" type="button" data-cam="iso">3D</button>
+        <button class="btn" type="button" data-cam="front">Front</button>
+        <button class="btn" type="button" data-cam="side">Side</button>
+        <button class="btn" type="button" data-cam="top">Top</button>
+        <span class="sep"></span>
+        <button class="btn" type="button" id="gl_walls" aria-pressed="true">Walls</button>
+        <button class="btn" type="button" id="gl_walk" aria-pressed="true">Walking line</button>
+      </div>
+      <div class="coords" id="coords" aria-hidden="true"></div>
+      <div class="howto" id="howto" aria-hidden="true"></div>
+      <div class="stage-error" id="stageError" role="alert" hidden></div>
+    </section>
+  </main>
+
+  <aside class="rules" id="rulesPanel" aria-label="Rules check">
+    <h2>Rules check</h2>
+    <div id="rulesBody"></div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+'use strict';
+(() => {
+// =====================================================================
+//  L-stair designer — quarter-turn stair with a square landing.
+//  Engine → hidden-line drawings (plan, elevation, A3 sheet) → painters
+//  (canvas, PDF, SVG, DXF) → three.js model → UI.  All lengths in mm.
+//
+//  Canonical plan frame (the "LR" layout, as in the reference drawings):
+//    x to the right, y up the page. Lower flight x∈[X−E, X], rising +y
+//    from its first riser at y = 0. Landing x∈[X−E, X], y∈[Lr, Lr+E].
+//    Upper flight x∈[0, X−E], rising −x to the slab edge at x = 0.
+//  The other hand is this frame mirrored in x.
+// =====================================================================
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'text') el.textContent = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c !== null && c !== undefined && c !== false) el.append(c);
+  return el;
+}
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const f1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
+function fmtDim(v) {
+  const x = Math.round(Math.abs(v) * 10) / 10;
+  let [i, d] = (Number.isInteger(x) ? String(x) : x.toFixed(1)).split('.');
+  i = i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return (v < -0.05 ? '-' : '') + i + (d ? '.' + d : '');
+}
+const deg = (r) => (r * 180) / Math.PI;
+
+// ================================================================ params
+const PROFILES = {
+  main: { label: 'Dwelling – stair inside the home', maxRise: 190, minGoing: 250, widthStatus: 'FAIL',
+    note: '§4: dwelling or accommodation stair, rise max 190, going min 250' },
+  aux: { label: 'Dwelling – to a loft, storage or other non-essential space', maxRise: 220, minGoing: 220, widthStatus: 'WARN',
+    note: '§4: stair to spaces not essential for living, rise max 220, going min 220' },
+  custom: { label: 'Custom limits', widthStatus: 'WARN', note: 'your own limits' },
+};
+
+const DEFAULTS = {
+  Y: 2380, X: 1660, E: 860, Z: 50, F: 50, C: 9, P: 5,
+  H: true, SP: true, BW: true, LR: true, stepDims: false,
+  tr: 20, ts: 45, ws: 300, inset: 30, post: 95, rim: 145,
+  guard: true, guardH: 900, bal: 40, gap: 95, slab: 250,
+  profile: 'main', maxRise: 190, minGoing: 250, minWidth: 850, headroom: 1950,
+  name: 'L-stair with landing', drawnBy: '', notes: '',
+};
+const PRESETS = {
+  example: { ...DEFAULTS },
+  dwelling: { ...DEFAULTS, Y: 2700, X: 2650, E: 900, Z: 40, F: 25, C: 14, P: 7, BW: false, LR: false, name: 'Dwelling stair 2700' },
+  loft: { ...DEFAULTS, Y: 2600, X: 2150, E: 800, Z: 40, F: 30, C: 11, P: 5, BW: false, LR: true,
+    profile: 'aux', maxRise: 220, minGoing: 220, name: 'Loft stair 2600' },
+};
+
+const SCHEMA = [
+  { id: 'opening', title: 'Fill in dimensions', fields: [
+    { k: 'Y', code: 'Y', label: 'Opening height', unit: 'mm', min: 300, max: 9000, hint: 'Floor to upper floor (finished levels).' },
+    { k: 'X', code: 'X', label: 'Opening length', unit: 'mm', min: 300, max: 15000, hint: 'Slab edge to the far side of the landing, along the upper flight.' },
+    { k: 'E', code: 'E', label: 'Width of staircase', unit: 'mm', min: 300, max: 3000 },
+    { k: 'Z', code: 'Z', label: 'Stair thickness', unit: 'mm', min: 10, max: 150 },
+    { k: 'F', code: 'F', label: 'Stair nosing', unit: 'mm', min: 0, max: 150 },
+  ] },
+  { id: 'steps', title: 'Amount of stairs', fields: [
+    { k: 'C', code: 'C', label: 'Stairs in total', type: 'int', min: 2, max: 40, hint: 'The landing counts as one stair.' },
+    { k: 'P', code: 'P', label: 'Lower steps', type: 'int', min: 1, max: 39, hint: 'Up to and including the landing.' },
+    { k: 'H', code: 'H', label: 'Show risers', type: 'bool', hint: 'Closed risers – drawings, 3D and cut list.' },
+    { k: 'SP', code: 'SP', label: 'Top stair is below the floor', type: 'bool', hint: 'Off: the top stair is level with the upper floor.' },
+    { k: 'BW', label: 'Drawing in black and white', type: 'bool' },
+    { k: 'LR', code: 'LR', label: 'Change staircase direction', type: 'bool', hint: (p) => (p.LR ? 'Now: turns left going up.' : 'Now: turns right going up.') },
+    { k: 'stepDims', label: 'Dimension every step', type: 'bool' },
+  ] },
+  { id: 'structure', title: 'Structure', adv: true, fields: [
+    { k: 'tr', label: 'Riser thickness', unit: 'mm', min: 6, max: 60, when: (p) => p.H },
+    { k: 'ts', label: 'Stringer thickness', unit: 'mm', min: 20, max: 120 },
+    { k: 'ws', label: 'Stringer board width', unit: 'mm', min: 120, max: 600, hint: 'Cut (sawtooth) stringers under the treads.' },
+    { k: 'inset', label: 'Stringer in from the edge', unit: 'mm', min: 0, max: 300 },
+    { k: 'rim', label: 'Landing frame depth', unit: 'mm', min: 45, max: 400 },
+    { k: 'post', label: 'Landing post size', unit: 'mm', min: 45, max: 200 },
+    { k: 'guard', label: 'Guard on the open side', type: 'bool', hint: '3D model and cut list.' },
+    { k: 'guardH', label: 'Guard height', unit: 'mm', min: 700, max: 1300, when: (p) => p.guard, hint: 'Above the nosing line.' },
+    { k: 'bal', label: 'Baluster size', unit: 'mm', min: 15, max: 100, when: (p) => p.guard },
+    { k: 'slab', label: 'Upper slab thickness', unit: 'mm', min: 50, max: 800 },
+  ] },
+  { id: 'rules', title: 'Rule limits', adv: true, fields: [
+    { k: 'profile', label: 'Stair use', type: 'select', options: Object.entries(PROFILES).map(([k, v]) => [k, v.label]) },
+    { k: 'maxRise', label: 'Max. rise', unit: 'mm', min: 100, max: 300, when: (p) => p.profile === 'custom' },
+    { k: 'minGoing', label: 'Min. going', unit: 'mm', min: 100, max: 400, when: (p) => p.profile === 'custom' },
+    { k: 'minWidth', label: 'Min. width', unit: 'mm', min: 400, max: 2000 },
+    { k: 'headroom', label: 'Min. headroom', unit: 'mm', min: 1500, max: 2600 },
+  ] },
+  { id: 'title', title: 'Title block', adv: true, fields: [
+    { k: 'name', label: 'Project', type: 'text' },
+    { k: 'drawnBy', label: 'Drawn by', type: 'text' },
+    { k: 'notes', label: 'Notes', type: 'text' },
+  ] },
+];
+
+function normalize(p) {
+  const out = { ...DEFAULTS };
+  for (const k of Object.keys(DEFAULTS)) {
+    if (!(k in (p || {}))) continue;
+    const d = DEFAULTS[k], v = p[k];
+    if (typeof d === 'number') out[k] = Number(v);
+    else if (typeof d === 'boolean') out[k] = v === true || v === 'true' || v === 1;
+    else out[k] = String(v);
+  }
+  if (!PROFILES[out.profile]) out.profile = 'custom';
+  if (out.profile !== 'custom') {
+    out.maxRise = PROFILES[out.profile].maxRise;
+    out.minGoing = PROFILES[out.profile].minGoing;
+  }
+  return out;
+}
+
+// ================================================================ engine
+const PASS = 'PASS', FAIL = 'FAIL', WARN = 'WARN', INFO = 'INFO';
+
+function rectPoly(r) { return [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]]; }
+
+function clipBelow(poly, zmin) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const A = poly[i], B = poly[(i + 1) % poly.length];
+    const ia = A[1] >= zmin - 1e-9, ib = B[1] >= zmin - 1e-9;
+    if (ia) out.push(A);
+    if (ia !== ib) {
+      const t = (zmin - A[1]) / (B[1] - A[1]);
+      out.push([A[0] + t * (B[0] - A[0]), zmin]);
+    }
+  }
+  return out;
+}
+function dedupePts(pts) {
+  const out = [];
+  for (const q of pts) {
+    const l = out[out.length - 1];
+    if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > 1e-6) out.push(q);
+  }
+  if (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 1e-6) out.pop();
+  // drop collinear middle points
+  const res = [];
+  for (let i = 0; i < out.length; i++) {
+    const a = out[(i - 1 + out.length) % out.length], b = out[i], c = out[(i + 1) % out.length];
+    const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (Math.abs(cr) > 1e-6) res.push(b);
+  }
+  return res;
+}
+
+function compute(p) {
+  const errors = [];
+  const { Y, X, E, Z, F, C, P } = p;
+  if (!(Y > 0 && X > 0 && E > 0)) errors.push('Fill in the opening height Y, the opening length X and the width E.');
+  if (!(Number.isInteger(C) && C >= 2)) errors.push('Stairs in total (C) must be a whole number, at least 2.');
+  else if (!(Number.isInteger(P) && P >= 1 && P <= C - 1)) {
+    errors.push(`Lower steps (P) must be from 1 to ${C - 1}: the landing is step P and at least one stair has to follow it.`);
+  }
+  if (!(X > E)) errors.push('Opening length (X) must be longer than the width (E): the landing takes E of it.');
+  if (errors.length) return { errors };
+
+  const N = C + (p.SP ? 1 : 0);
+  const R = Y / N, U = C - P, G = (X - E) / U, Lc = P - 1, Lr = Lc * G, x0 = X - E;
+  if (!(Z > 0 && Z < R - 10)) errors.push(`Stair thickness (Z) must be more than 0 and clearly less than the rise (${f1(R)}).`);
+  if (!(F >= 0 && F < G - 20)) errors.push(`Nosing (F) must be less than the going (${f1(G)}).`);
+  if (p.H && !(p.tr > 0 && p.tr < G - F)) errors.push('Riser thickness must be more than 0 and less than going − nosing.');
+  if (!(p.ts > 0 && 2 * (p.ts + p.inset) < E - 20)) errors.push('The stringers do not fit in the width: 2 × (thickness + inset) must be well under E.');
+  if (errors.length) return { errors };
+
+  const warnings = [];
+  const trH = p.H ? p.tr : 0;
+  const theta = Math.atan2(R, G);
+  const cosT = Math.cos(theta), sinT = Math.sin(theta);
+
+  // ---- steps (treads; step P is the landing)
+  const steps = [];
+  for (let k = 1; k <= C; k++) {
+    const top = k * R, bot = top - Z;
+    let kind, rect, line;
+    if (k < P) {
+      const y = (k - 1) * G;
+      kind = 'lower'; rect = [x0, y - F, X, k * G]; line = { ax: 'y', v: y };
+    } else if (k === P) {
+      kind = 'landing'; rect = [x0, Lr - F, X, Lr + E]; line = { ax: 'y', v: Lr };
+    } else {
+      const j = k - P, xf = x0 - (j - 1) * G;
+      kind = 'upper'; rect = [xf - G, Lr, xf + F, Lr + E]; line = { ax: 'x', v: xf };
+    }
+    steps.push({ k, kind, top, bot, rect, line });
+  }
+
+  // ---- risers: board behind the riser line, from the underside of the step below to the underside of this step
+  const risers = [];
+  if (p.H) {
+    for (const s of steps) {
+      const z0 = Math.max(0, (s.k - 1) * R - Z), z1 = s.k * R - Z;
+      const v = s.line.v;
+      const rect = s.line.ax === 'y' ? [x0, v, X, v + p.tr] : [v - p.tr, Lr, v, Lr + E];
+      const seg = s.line.ax === 'y' ? [[x0, v], [X, v]] : [[v, Lr], [v, Lr + E]];
+      risers.push({ k: s.k, rect, seg, z0, z1, ax: s.line.ax, v });
+    }
+  }
+
+  // ---- cut stringers (profile in s along the ascent, z absolute)
+  function profile(n, z0, sEnd, base) {
+    const m = R / G;
+    const z1 = z0 + R - Z;
+    const top = (s) => z1 + m * (s - trH);
+    const bot = (s) => top(s) - p.ws / cosT;
+    const sb = trH + (z0 - (z1 - p.ws / cosT)) / m;
+    const pts = [];
+    if (base === 'floor') pts.push(sb > trH ? [trH, z0] : [trH, bot(trH)]);
+    else pts.push([0, bot(0)], [0, z0 - Z], [trH, z0 - Z]);
+    for (let t = 1; t <= n; t++) {
+      const zt = z0 + t * R - Z;
+      pts.push([trH + (t - 1) * G, zt], [t < n ? trH + t * G : sEnd, zt]);
+    }
+    pts.push([sEnd, Math.min(bot(sEnd), z0 + n * R - Z)]);
+    if (base === 'floor') {
+      if (sb >= sEnd) pts[pts.length - 1] = [sEnd, z0];
+      else if (sb > trH) pts.push([sb, z0]);
+    }
+    const poly = dedupePts(clipBelow(dedupePts(pts), 0));
+    const us = poly.map(([s, z]) => s * cosT + z * sinT);
+    const vs = poly.map(([s, z]) => -s * sinT + z * cosT);
+    return {
+      poly, throat: p.ws - R * cosT,
+      len: Math.max(...us) - Math.min(...us), wid: Math.max(...vs) - Math.min(...vs),
+      sMin: Math.min(...poly.map((q) => q[0])), sMax: Math.max(...poly.map((q) => q[0])),
+      zMin: Math.min(...poly.map((q) => q[1])), zMax: Math.max(...poly.map((q) => q[1])),
+    };
+  }
+  const stringers = [];
+  if (Lc >= 1) {
+    const pr = profile(Lc, 0, Lr + trH, 'floor');
+    for (const side of ['inner', 'outer']) {
+      const a0 = side === 'inner' ? x0 + p.inset : X - p.inset - p.ts;
+      stringers.push({ ...pr, flight: 'lower', side, a0, a1: a0 + p.ts, P0: [0, 0], dir: [0, 1], A: [1, 0],
+        plan: [a0, pr.sMin, a0 + p.ts, pr.sMax] });
+    }
+  }
+  {
+    const pr = profile(U, P * R, U * G, 'hang');
+    for (const side of ['inner', 'outer']) {
+      const a0 = side === 'inner' ? Lr + p.inset : Lr + E - p.inset - p.ts;
+      stringers.push({ ...pr, flight: 'upper', side, a0, a1: a0 + p.ts, P0: [x0, 0], dir: [-1, 0], A: [0, 1],
+        plan: [x0 - pr.sMax, a0, x0 - pr.sMin, a0 + p.ts] });
+    }
+  }
+  const throat = stringers[0].throat;
+  if (throat < 60) warnings.push(`Stringer board too narrow: only ${throat.toFixed(0)} mm left under the notches.`);
+
+  // ---- landing frame and posts
+  const deckBot = P * R - Z;
+  const fh = deckBot - p.rim < 150 ? deckBot : p.rim; // low landing: the frame stands on the floor
+  const ly0 = Lr + trH, ly1 = Lr + E, ts = p.ts, ps = p.post;
+  const rims = [
+    { rect: [x0, ly0, X, ly0 + ts], side: 'front' },
+    { rect: [x0, ly1 - ts, X, ly1], side: 'back' },
+    { rect: [x0, ly0 + ts, x0 + ts, ly1 - ts], side: 'left' },
+    { rect: [X - ts, ly0 + ts, X, ly1 - ts], side: 'right' },
+  ].map((r) => ({ ...r, z0: deckBot - fh, z1: deckBot }));
+  const postH = deckBot - fh;
+  const posts = postH >= 1 ? [[x0, ly0, 'inner'], [X - ps, ly0, 'front'], [x0, ly1 - ps, 'back'], [X - ps, ly1 - ps, 'corner']]
+    .map(([x, y, tag]) => ({ rect: [x, y, x + ps, y + ps], z0: 0, z1: postH, tag })) : [];
+  const landing = { deckBot, fh, rims, posts, postH, ly0, ly1 };
+
+  // ---- guard on the open sides (3D and cut list)
+  let guard = null;
+  if (p.guard) {
+    const bal = p.bal, railW = 60, railT = 45, np = 80, off = 15 + bal / 2, m = R / G, H = p.guardH;
+    const zl = (y) => R + (y + F) * m + H;                  // lower flight rail top
+    const zu = (x) => (P + 1) * R + (x0 + F - x) * m + H;   // upper flight rail top
+    const balusters = [], rails = [], newels = [];
+    const perTread = Math.max(1, Math.ceil(G / (bal + p.gap)));
+    const spacing = G / perTread;
+    let gapMax = spacing - bal;
+    const gx = x0 + off, gy = Lr + off;
+    // landing newel: the inner corner post carried up
+    const lnTop = Math.max(Lc >= 1 ? zl(ly0) : 0, zu(x0)) + 60;
+    const lnRect = [x0, ly0, x0 + ps, ly0 + ps];
+    newels.push({ rect: lnRect, z0: 0, z1: lnTop, tag: 'landing' });
+    if (Lc >= 1) {
+      newels.push({ rect: [gx - np / 2, 0, gx + np / 2, np], z0: 0, z1: zl(np / 2) + 80, tag: 'bottom' });
+      for (let k = 1; k <= Lc; k++) {
+        for (let i = 0; i < perTread; i++) {
+          const y = (k - 1) * G + (i + 0.5) * spacing;
+          if (y - bal / 2 < np + 5) continue;
+          balusters.push({ rect: [gx - bal / 2, y - bal / 2, gx + bal / 2, y + bal / 2], z0: k * R, z1: zl(y) - railT });
+        }
+      }
+      const ya = np, yb = ly0;
+      rails.push({ flight: 'lower', s0: ya, s1: yb, P0: [0, 0], dir: [0, 1], A: [1, 0], a0: gx - railW / 2, a1: gx + railW / 2,
+        poly: [[ya, zl(ya) - railT], [yb, zl(yb) - railT], [yb, zl(yb)], [ya, zl(ya)]], len: (yb - ya) / cosT });
+    }
+    newels.push({ rect: [0, gy - np / 2, np, gy + np / 2], z0: C * R - Z, z1: zu(np / 2) + 80, tag: 'top' });
+    for (let j = 1; j <= U; j++) {
+      for (let i = 0; i < perTread; i++) {
+        const x = x0 - (j - 1) * G - (i + 0.5) * spacing;
+        if (x - bal / 2 < np + 5) continue;
+        balusters.push({ rect: [x - bal / 2, gy - bal / 2, x + bal / 2, gy + bal / 2], z0: (P + j) * R, z1: zu(x) - railT });
+      }
+    }
+    {
+      const sa = 0, sb = x0 - np;
+      const z = (s) => zu(x0 - s);
+      rails.push({ flight: 'upper', s0: sa, s1: sb, P0: [x0, 0], dir: [-1, 0], A: [0, 1], a0: gy - railW / 2, a1: gy + railW / 2,
+        poly: [[sa, z(sa) - railT], [sb, z(sb) - railT], [sb, z(sb)], [sa, z(sa)]], len: (sb - sa) / cosT });
+    }
+    guard = { balusters, rails, newels, gapMax, H, bal, railW, railT, perTread };
+  }
+
+  // ---- opening needed for headroom
+  const zs = Y - p.slab, zlim = zs - p.headroom;
+  const need = steps.filter((s) => s.top > zlim + 1e-6);
+  let opening = null;
+  if (need.length) {
+    const low = need[0];
+    let poly, desc;
+    if (low.kind === 'upper') {
+      poly = rectPoly([0, Lr, low.rect[2], Lr + E]);
+      desc = `${fmtDim(low.rect[2])} × ${fmtDim(E)} over the upper flight`;
+    } else {
+      const yLow = low.rect[1];
+      poly = [[0, Lr], [x0, Lr], [x0, yLow], [X, yLow], [X, Lr + E], [0, Lr + E]];
+      desc = `${fmtDim(X)} × ${fmtDim(E)}, plus ${fmtDim(E)} × ${fmtDim(Lr - yLow)} over the lower flight`;
+    }
+    opening = { poly, from: low.k, zlim, desc };
+  }
+
+  // ---- rules (YMa 1007/2017)
+  const prof = PROFILES[p.profile] || PROFILES.custom;
+  const checks = [];
+  checks.push({ ref: 'YMa 1007/2017 §4', rule: 'Rise', value: f1(R), limit: `max ${p.maxRise}`,
+    status: R <= p.maxRise + 0.05 ? PASS : FAIL, note: `${N} rises of ${fmtDim(Y)}` });
+  checks.push({ ref: 'YMa 1007/2017 §4', rule: 'Going', value: f1(G), limit: `min ${p.minGoing}`,
+    status: G >= p.minGoing - 0.05 ? PASS : FAIL, note: 'same in both flights' });
+  const f2 = 2 * R + G;
+  checks.push({ ref: 'YM guide', rule: 'Step formula 2R + G', value: f2.toFixed(0), limit: '600–660',
+    status: Math.abs(f2 - 630) <= 30 ? PASS : WARN, note: 'comfort; about 630 indoors' });
+  checks.push({ ref: 'YMa 1007/2017 §3', rule: 'Width', value: fmtDim(E), limit: `min ${p.minWidth}`,
+    status: E >= p.minWidth - 0.05 ? PASS : prof.widthStatus, note: 'handrails and skirting may project into it' });
+  if (!p.H) {
+    const g = R - Z;
+    checks.push({ ref: 'YMa 1007/2017 §8', rule: 'Open risers: gap between treads', value: g.toFixed(0), limit: 'max 100',
+      status: g <= 100 ? PASS : FAIL, note: 'a 100 mm cube must not pass' });
+  }
+  if (opening) {
+    checks.push({ ref: 'YMa 1007/2017 §14', rule: `Headroom ${p.headroom}`, value: `open over step ${opening.from}–${C}`, limit: 'slab clear',
+      status: INFO, note: `minimum opening ${opening.desc} (orange in plan)` });
+  } else {
+    checks.push({ ref: 'YMa 1007/2017 §14', rule: `Headroom ${p.headroom}`, value: 'clear', limit: 'slab clear', status: PASS, note: 'the slab is high enough everywhere' });
+  }
+  if (guard) {
+    const ok = guard.H >= 900 && guard.gapMax <= 100;
+    checks.push({ ref: 'YMa 1007/2017 §7–8', rule: 'Guard on the open side', value: `${guard.H} / gap ${guard.gapMax.toFixed(0)}`,
+      limit: 'min 900 / max 100', status: ok ? PASS : FAIL, note: 'vertical balusters only (children); 900 is enough inside a home under 3 m fall' });
+  } else {
+    checks.push({ ref: 'YMa 1007/2017 §7', rule: 'Guard on the open side', value: 'not included', limit: 'required', status: WARN,
+      note: 'fall height over 0.7 m: protective guard, min 900 inside a home' });
+  }
+  checks.push({ ref: 'YMa 1007/2017 §9', rule: 'Handrails', value: '–', limit: 'both sides', status: INFO,
+    note: 'full length on both sides, continuous across the landing' });
+  checks.push({ ref: 'info', rule: 'Pitch', value: `${deg(theta).toFixed(1)}°`, limit: '–', status: INFO, note: 'not limited as such; follows from rise and going' });
+  const cons = [];
+  cons.push({ ref: 'construction', rule: 'Stringer: timber under the notches', value: throat.toFixed(0), limit: 'min 100',
+    status: throat >= 100 ? PASS : WARN, note: `${p.ts}×${p.ws} board, cut seats ${(R * cosT).toFixed(0)} deep` });
+  if (!posts.length) cons.push({ ref: 'construction', rule: 'Landing frame', value: 'no posts', limit: '–', status: INFO, note: 'the landing is too low for posts; frame bears on the floor' });
+
+  // ---- suggestion that passes rise and going for this opening
+  let suggestion = null;
+  if (checks[0].status === FAIL || checks[1].status === FAIL) {
+    const Nmin = Math.ceil(Y / p.maxRise - 1e-9);
+    const Cs = Nmin - (p.SP ? 1 : 0);
+    const Umax = Math.floor((X - E) / p.minGoing + 1e-9);
+    if (Umax >= 1 && Cs >= 2) {
+      const Us = Math.min(Umax, Cs - 1);
+      const Ps = Cs - Us, Gs = (X - E) / Us, Rs = Y / Nmin;
+      suggestion = { C: Cs, P: Ps, R: Rs, G: Gs, Lr: (Ps - 1) * Gs, f: 2 * Rs + Gs };
+    } else {
+      suggestion = { tooShort: true, Xmin: E + p.minGoing };
+    }
+  }
+
+  // ---- cut list
+  const cut = [];
+  const r0 = Math.round;
+  cut.push(['Tread', C - 1, r0(E), r0(G + F), Z, `${Lc} lower + ${U} upper; going ${f1(G)} + nosing ${F}`]);
+  cut.push(['Landing deck', 1, r0(E), r0(E + F), Z, `top +${fmtDim(P * R)}; nosing toward the lower flight`]);
+  if (p.H) {
+    cut.push(['Riser, bottom', 1, r0(E), r0(R - Z), p.tr, 'floor to the underside of step 1']);
+    if (C > 1) cut.push(['Riser', C - 1, r0(E), f1(R), p.tr, `steps 2–${C}${p.SP ? '; the slab edge is the last riser' : ''}`]);
+  }
+  for (const fl of ['lower', 'upper']) {
+    const s = stringers.find((x) => x.flight === fl);
+    if (s) cut.push([`Stringer, ${fl} flight`, 2, r0(s.len), p.ws, p.ts, `cut, pitch ${deg(theta).toFixed(1)}°, throat ${s.throat.toFixed(0)}`]);
+  }
+  cut.push(['Landing rim joist', 2, r0(E), r0(fh), ts, 'front and back']);
+  cut.push(['Landing rim joist', 2, r0(ly1 - ly0 - 2 * ts), r0(fh), ts, 'sides']);
+  const nPost = posts.length - (guard && posts.length ? 1 : 0);
+  if (nPost > 0) cut.push(['Landing post', nPost, r0(postH), ps, ps, 'under the landing frame']);
+  if (guard) cut.push(['Newel, landing corner', 1, r0(guard.newels.find((n) => n.tag === 'landing').z1), ps, ps, 'inner corner of the landing, up past the handrails']);
+  if (guard) {
+    for (const rl of guard.rails) cut.push([`Handrail, ${rl.flight} flight`, 1, r0(rl.len + 200), guard.railW, guard.railT, 'incl. 200 for fitting']);
+    const lens = guard.balusters.map((b) => b.z1 - b.z0);
+    if (lens.length) cut.push(['Baluster', lens.length, r0(Math.max(...lens)), guard.bal, guard.bal, `lengths ${r0(Math.min(...lens))}–${r0(Math.max(...lens))}, clear gap ${guard.gapMax.toFixed(0)}`]);
+    for (const n of guard.newels.filter((x) => x.tag !== 'landing')) cut.push([`Newel, ${n.tag}`, 1, r0(n.z1 - n.z0), 80, 80, '']);
+  }
+
+  return {
+    p, N, R, G, U, Lc, Lr, x0, trH, theta, f2, steps, risers, stringers, landing, guard, opening,
+    checks, cons, suggestion, cut, warnings, mirror: !p.LR,
+  };
+}
+
+// ======================================================= hidden lines
+// items: { poly | segs, depth (smaller = nearer), vis: layer|null, hid: layer|null, occ (default true for polys) }
+function polyBox(pts) {
+  let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+  for (const [x, y] of pts) { if (x < a) a = x; if (y < b) b = y; if (x > c) c = x; if (y > d) d = y; }
+  return [a, b, c, d];
+}
+function insidePoly(pt, poly, eps = 0.02) {
+  let inn = false;
+  const [x, y] = pt;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]) inn = !inn;
+  }
+  if (!inn) return false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[j], b = poly[i];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L2 = dx * dx + dy * dy;
+    let t = L2 ? ((x - a[0]) * dx + (y - a[1]) * dy) / L2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    if (Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy) < eps) return false;
+  }
+  return true;
+}
+function coveredBy(a, b, poly) {
+  const ts = [0, 1];
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  for (let i = 0; i < poly.length; i++) {
+    const P = poly[i], Q = poly[(i + 1) % poly.length];
+    const ex = Q[0] - P[0], ey = Q[1] - P[1];
+    const d = dx * ey - dy * ex;
+    if (Math.abs(d) < 1e-12) continue;
+    const wx = P[0] - a[0], wy = P[1] - a[1];
+    const t = (wx * ey - wy * ex) / d, u = (wx * dy - wy * dx) / d;
+    if (t > 1e-9 && t < 1 - 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
+  }
+  ts.sort((x, y) => x - y);
+  const out = [];
+  for (let i = 0; i + 1 < ts.length; i++) {
+    const t0 = ts[i], t1 = ts[i + 1];
+    if (t1 - t0 < 1e-9) continue;
+    const tm = (t0 + t1) / 2;
+    if (insidePoly([a[0] + tm * dx, a[1] + tm * dy], poly)) out.push([t0, t1]);
+  }
+  return out;
+}
+function mergeIv(iv) {
+  iv.sort((x, y) => x[0] - y[0]);
+  const out = [];
+  for (const [a, b] of iv) {
+    const l = out[out.length - 1];
+    if (l && a <= l[1] + 1e-9) l[1] = Math.max(l[1], b);
+    else out.push([a, b]);
+  }
+  return out;
+}
+function hlr(items) {
+  const occ = items.filter((i) => i.poly && i.occ !== false).map((i) => ({ poly: i.poly, depth: i.depth, bb: polyBox(i.poly) }));
+  const out = [];
+  for (const it of items) {
+    const segs = it.segs || it.poly.map((a, i) => [a, it.poly[(i + 1) % it.poly.length]]);
+    const bl = occ.filter((o) => o.depth < it.depth - 1e-6);
+    for (const [a, b] of segs) {
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 0.05) continue;
+      const sb = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+      let cov = [];
+      for (const o of bl) {
+        if (sb[2] < o.bb[0] || sb[0] > o.bb[2] || sb[3] < o.bb[1] || sb[1] > o.bb[3]) continue;
+        cov.push(...coveredBy(a, b, o.poly));
+      }
+      cov = mergeIv(cov);
+      const at = (t) => [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+      let t = 0;
+      const push = (t0, t1, layer) => { if (layer && (t1 - t0) * len > 0.5) out.push({ a: at(t0), b: at(t1), layer }); };
+      for (const [c0, c1] of cov) {
+        push(t, c0, it.vis);
+        push(c0, c1, it.hid);
+        t = c1;
+      }
+      push(t, 1, it.vis);
+    }
+  }
+  const seen = new Set();
+  return out.filter((s) => {
+    const k1 = `${s.a[0].toFixed(1)},${s.a[1].toFixed(1)}`, k2 = `${s.b[0].toFixed(1)},${s.b[1].toFixed(1)}`;
+    const key = s.layer + '|' + (k1 < k2 ? k1 + '|' + k2 : k2 + '|' + k1);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ===================================================== display lists
+// Items in drawing units (model mm, or paper mm on a sheet):
+//   {k:'L', pts, closed, layer}  {k:'F', rings, layer}  {k:'C', c, r, layer}
+//   {k:'T', s, p, h (font size), align: 'BL'|'MC'|..., rot (deg, CCW), layer}
+const SCALE = 20; // annotation sizes are paper mm × SCALE
+const TX = { dim: 2.8 * SCALE, num: 3.0 * SCALE, small: 2.1 * SCALE, label: 2.4 * SCALE, title: 4.6 * SCALE, sub: 2.3 * SCALE };
+const DIM = { arrow: 2.8 * SCALE, arrowW: 0.55 * SCALE, gap: 1.2 * SCALE, over: 1.8 * SCALE, tgap: 0.8 * SCALE, row: 11 * SCALE };
+
+const LAYERS = {
+  outline: { lw: 0.35, aci: 7 },
+  thin: { lw: 0.18, aci: 7 },
+  hidden: { lw: 0.25, dash: [2.4, 1.2], aci: 5, lt: 'DASHED' },
+  struct: { lw: 0.18, dash: [1.2, 0.9], aci: 8, lt: 'DASHED2' },
+  dims: { lw: 0.18, aci: 3 },
+  walk: { lw: 0.25, dash: [6, 1.2, 0.5, 1.2], aci: 1, lt: 'DASHDOT' },
+  opening: { lw: 0.35, dash: [6, 1.5, 0.5, 1.5], aci: 30, lt: 'DASHDOT' },
+  help: { lw: 0.18, dash: [3, 1, 0.5, 1], aci: 9, lt: 'DASHDOT' },
+  hatch: { lw: 0.13, aci: 8 },
+  text: { aci: 7 },
+  frame: { lw: 0.5, aci: 7 },
+  tb: { lw: 0.25, aci: 7 },
+  fillTread: { area: true }, fillRiser: { area: true }, fillStringer: { area: true }, fillPost: { area: true }, fillSlab: { area: true },
+};
+const PALETTES = {
+  color: { bg: '#ffffff', outline: '#1b2024', thin: '#1b2024', hidden: '#4f79a8', struct: '#a9b2b8', dims: '#1d5bd6',
+    walk: '#d0312d', opening: '#e07b00', help: '#8a949a', hatch: '#8a949a', text: '#1b2024', frame: '#1b2024', tb: '#1b2024',
+    fillTread: '#f3e5c9', fillRiser: '#fbf9f3', fillStringer: '#dcc29c', fillPost: '#d9bf96', fillSlab: '#e7e9e5' },
+  bw: { bg: '#ffffff', outline: '#000', thin: '#000', hidden: '#000', struct: '#777', dims: '#000', walk: '#000', opening: '#000',
+    help: '#555', hatch: '#555', text: '#000', frame: '#000', tb: '#000',
+    fillTread: null, fillRiser: null, fillStringer: null, fillPost: null, fillSlab: null },
+  colorDark: { bg: '#1b1f24', outline: '#e5e8ea', thin: '#e5e8ea', hidden: '#86aee0', struct: '#5d676e', dims: '#7aa6ff',
+    walk: '#ff6b5e', opening: '#ffaa4a', help: '#7d878d', hatch: '#6f797f', text: '#e5e8ea', frame: '#e5e8ea', tb: '#e5e8ea',
+    fillTread: '#3a3226', fillRiser: '#2d3034', fillStringer: '#4a3c2a', fillPost: '#4a3c2a', fillSlab: '#2a2f33' },
+  bwDark: { bg: '#1b1f24', outline: '#f0f0f0', thin: '#f0f0f0', hidden: '#f0f0f0', struct: '#8a9196', dims: '#f0f0f0', walk: '#f0f0f0',
+    opening: '#f0f0f0', help: '#a0a7ab', hatch: '#a0a7ab', text: '#f0f0f0', frame: '#f0f0f0', tb: '#f0f0f0',
+    fillTread: null, fillRiser: null, fillStringer: null, fillPost: null, fillSlab: null },
+};
+
+function textBox(t) {
+  // rough extents for layout (0.55 em per char)
+  const w = t.s.length * 0.55 * t.h, hh = 0.75 * t.h;
+  const fx = { L: 0, C: 0.5, R: 1 }[t.align[1]] ?? 0.5, fy = { B: 0, M: 0.5, T: 1 }[t.align[0]] ?? 0.5;
+  const r = ((t.rot || 0) * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r);
+  const pts = [];
+  for (const [u, v] of [[-fx * w, -fy * hh], [(1 - fx) * w, -fy * hh], [(1 - fx) * w, (1 - fy) * hh], [-fx * w, (1 - fy) * hh]]) {
+    pts.push([t.p[0] + u * c - v * s, t.p[1] + u * s + v * c]);
+  }
+  return pts;
+}
+function itemsBBox(items) {
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  const add = ([x, y]) => { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; };
+  for (const it of items) {
+    if (it.k === 'L') it.pts.forEach(add);
+    else if (it.k === 'F') it.rings.forEach((r) => r.forEach(add));
+    else if (it.k === 'C') { add([it.c[0] - it.r, it.c[1] - it.r]); add([it.c[0] + it.r, it.c[1] + it.r]); }
+    else if (it.k === 'T') textBox(it).forEach(add);
+  }
+  return b;
+}
+function mapItems(items, fn, hs = 1) {
+  // copy items through a point map; hs scales text height and radii
+  return items.map((it) => {
+    if (it.k === 'L') return { ...it, pts: it.pts.map(fn) };
+    if (it.k === 'F') return { ...it, rings: it.rings.map((r) => r.map(fn)) };
+    if (it.k === 'C') return { ...it, c: fn(it.c), r: it.r * hs };
+    if (it.k === 'T') return { ...it, p: fn(it.p), h: it.h * hs };
+    return it;
+  });
+}
+
+class Pen {
+  constructor(mirror = false, X = 0) {
+    this.items = [];
+    this.sx = mirror ? -1 : 1;
+    this.ox = mirror ? X : 0;
+  }
+  P(q) { return [this.ox + this.sx * q[0], q[1]]; }
+  pline(pts, layer, closed = false) {
+    if (pts.length >= 2) this.items.push({ k: 'L', pts: pts.map((q) => this.P(q)), closed, layer });
+  }
+  line(a, b, layer) { this.pline([a, b], layer); }
+  rect(r, layer) { this.pline(rectPoly(r), layer, true); }
+  fill(pts, layer) { if (pts.length >= 3) this.items.push({ k: 'F', rings: [pts.map((q) => this.P(q))], layer }); }
+  circle(c, r, layer) { this.items.push({ k: 'C', c: this.P(c), r, layer }); }
+  text(s, q, hgt, o = {}) {
+    let align = o.align || 'MC';
+    if (o.flip && this.sx < 0) align = align[0] + ({ L: 'R', R: 'L' }[align[1]] || align[1]);
+    this.items.push({ k: 'T', s: String(s), p: this.P(q), h: hgt, align, rot: o.rot || 0, layer: o.layer || 'text' });
+  }
+  arc(c, r, a0, a1, layer, n = 24) {
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + ((a1 - a0) * i) / n;
+      pts.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]);
+    }
+    this.pline(pts, layer);
+  }
+  hatchRect(r, spacing, layer) {
+    // 45° lines clipped to an axis-aligned rectangle (Liang–Barsky on the diagonal family)
+    const [x0, y0, x1, y1] = r;
+    for (let c = y0 - x1; c <= y1 - x0; c += spacing) {
+      // line y = x + c
+      const t0 = Math.max(x0, y0 - c), t1 = Math.min(x1, y1 - c);
+      if (t1 - t0 > 1) this.line([t0, t0 + c], [t1, t1 + c], layer);
+    }
+  }
+  // arrow with its tip at T pointing along u (drawing coords)
+  _arrow(T, u) {
+    const n = [-u[1], u[0]], L = DIM.arrow, W = DIM.arrowW;
+    this.items.push({ k: 'F', rings: [[T, [T[0] - u[0] * L + n[0] * W, T[1] - u[1] * L + n[1] * W], [T[0] - u[0] * L - n[0] * W, T[1] - u[1] * L - n[1] * W]]], layer: 'dims' });
+  }
+  // linear dimension between model points a and b, dimension line through base; vertical or horizontal
+  dim(a, b, base, vert = false, o = {}) {
+    let A = this.P(a), B = this.P(b);
+    const Q = this.P(base);
+    let D1 = vert ? [Q[0], A[1]] : [A[0], Q[1]];
+    let D2 = vert ? [Q[0], B[1]] : [B[0], Q[1]];
+    if ((vert ? D1[1] > D2[1] : D1[0] > D2[0])) { [A, B] = [B, A]; [D1, D2] = [D2, D1]; }
+    const m = vert ? D2[1] - D1[1] : D2[0] - D1[0];
+    if (m < 0.5) return;
+    const u = vert ? [0, 1] : [1, 0];
+    const ext = (S, D) => {
+      const v = [D[0] - S[0], D[1] - S[1]], L = Math.hypot(v[0], v[1]);
+      if (L < DIM.gap + 1) return;
+      const e = [v[0] / L, v[1] / L];
+      this.items.push({ k: 'L', pts: [[S[0] + e[0] * DIM.gap, S[1] + e[1] * DIM.gap], [D[0] + e[0] * DIM.over, D[1] + e[1] * DIM.over]], closed: false, layer: 'dims' });
+    };
+    ext(A, D1);
+    ext(B, D2);
+    const inside = m > 2 * DIM.arrow + 30;
+    if (inside) {
+      this.items.push({ k: 'L', pts: [D1, D2], closed: false, layer: 'dims' });
+      this._arrow(D1, [-u[0], -u[1]]);
+      this._arrow(D2, u);
+    } else {
+      const k = DIM.arrow * 1.9;
+      this.items.push({ k: 'L', pts: [[D1[0] - u[0] * k, D1[1] - u[1] * k], [D2[0] + u[0] * k, D2[1] + u[1] * k]], closed: false, layer: 'dims' });
+      this._arrow(D1, u);
+      this._arrow(D2, [-u[0], -u[1]]);
+    }
+    const mid = [(D1[0] + D2[0]) / 2, (D1[1] + D2[1]) / 2];
+    const s = o.text ?? fmtDim(m);
+    if (vert) this.items.push({ k: 'T', s, p: [mid[0] - DIM.tgap, mid[1]], h: TX.dim, align: 'BC', rot: 90, layer: 'dims' });
+    else this.items.push({ k: 'T', s, p: [mid[0], mid[1] + DIM.tgap], h: TX.dim, align: 'BC', rot: 0, layer: 'dims' });
+  }
+  chain(values, fixedPt, base, vert) {
+    // chain of dimensions through sorted coordinates; fixedPt gives the other coordinate of the measured points
+    const v = [];
+    for (const x of [...values].sort((a, b) => a - b)) if (!v.length || x - v[v.length - 1] > 0.5) v.push(x);
+    for (let i = 0; i + 1 < v.length; i++) {
+      if (v[i + 1] - v[i] < 0.5) continue;
+      if (vert) this.dim([fixedPt, v[i]], [fixedPt, v[i + 1]], [base, v[i]], true);
+      else this.dim([v[i], fixedPt], [v[i + 1], fixedPt], [v[i], base], false);
+    }
+  }
+}
+
+function titleBlock(pen, bbox, title, sub) {
+  // titles go above a drawing's extents, in drawing coordinates (never mirrored)
+  pen.items.push({ k: 'T', s: sub, p: [bbox[0], bbox[3] + 3.2 * SCALE], h: TX.sub, align: 'BL', rot: 0, layer: 'text' });
+  pen.items.push({ k: 'T', s: title, p: [bbox[0], bbox[3] + 6.6 * SCALE], h: TX.title, align: 'BL', rot: 0, layer: 'text' });
+}
+
+// ================================================================= plan
+function drawPlan(m) {
+  const { p, steps, risers, stringers, landing, Lr, x0, G, Lc, U } = m;
+  const X = p.X, E = p.E, F = p.F;
+  const pen = new Pen(m.mirror, X);
+  const slabW = 300;
+
+  // upper floor strip beyond the slab edge
+  const strip = [-slabW, Lr - 150, 0, Lr + E];
+  pen.fill(rectPoly(strip), 'fillSlab');
+  pen.hatchRect(strip, 3 * SCALE, 'hatch');
+  pen.pline([[0, strip[1]], [-slabW, strip[1]], [-slabW, strip[3]], [0, strip[3]]], 'thin');
+  pen.line([0, strip[1]], [0, strip[3]], 'outline');
+
+  // fills, lowest first, so nosings overlap correctly
+  for (const s of steps) pen.fill(rectPoly(s.rect), 'fillTread');
+
+  // hidden-line pass: what lies under a higher tread is dashed
+  const items = [];
+  for (const s of steps) items.push({ poly: rectPoly(s.rect), depth: -s.top, vis: 'outline', hid: 'hidden' });
+  for (const r of risers) items.push({ segs: [r.seg], depth: -r.z1, vis: 'outline', hid: 'hidden' });
+  for (const st of stringers) items.push({ poly: rectPoly(st.plan), depth: 1e6, vis: 'struct', hid: 'struct', occ: false });
+  for (const po of landing.posts) items.push({ poly: rectPoly(po.rect), depth: 1e6, vis: 'struct', hid: 'struct', occ: false });
+  for (const sg of hlr(items)) pen.line(sg.a, sg.b, sg.layer);
+
+  // minimum opening for headroom
+  if (m.opening) pen.pline(m.opening.poly, 'opening', true);
+
+  // walking line: circle at the start, arrow at the end
+  const xc = x0 + E / 2, yc = Lr + E / 2;
+  const y0w = Lc >= 1 ? Math.min(G * 0.35, 150) : Lr + 0.2 * E;
+  const xEnd = p.SP ? -slabW * 0.2 : Math.min(G * 0.45, 150);
+  pen.pline([[xc, y0w], [xc, yc], [xEnd + 2.6 * SCALE, yc]], 'walk');
+  pen.circle([xc, y0w], 1.6 * SCALE, 'walk');
+  pen.fill([[xEnd, yc], [xEnd + 5.5 * SCALE, yc + 1.6 * SCALE], [xEnd + 5.5 * SCALE, yc - 1.6 * SCALE]], 'walk');
+
+  // step numbers on the wall side of the walking line
+  for (const s of steps) {
+    let q;
+    if (s.kind === 'lower') q = [x0 + 0.74 * E, (s.k - 0.5) * G];
+    else if (s.kind === 'upper') q = [x0 - (s.k - m.p.P - 0.5) * G, Lr + 0.74 * E];
+    else q = [x0 + 0.76 * E, Lr + 0.76 * E];
+    pen.text(String(s.k), q, TX.num, { layer: 'text' });
+    if (s.kind === 'landing') pen.text(`+${fmtDim(s.top)}`, [q[0], q[1] - 1.1 * TX.num], TX.small, { layer: 'help' });
+  }
+  pen.text(`UPPER FLOOR +${fmtDim(p.Y)}`, [-slabW * 0.66, Lr + E / 2], TX.small, { rot: 90, layer: 'text' });
+
+  // dimensions
+  const R = DIM.row;
+  let row = Lr + E + R;
+  if (p.stepDims) {
+    pen.chain([...steps.filter((s) => s.kind === 'upper').map((s) => s.line.v), 0, X], Lr + E, row, false);
+    row += R;
+  }
+  pen.chain([0, x0, X], Lr + E, row, false);
+  pen.dim([0, Lr + E], [X, Lr + E], [0, row + R]);
+  let col = X + R;
+  if (Lc >= 1) {
+    if (p.stepDims) {
+      pen.chain([...steps.filter((s) => s.kind !== 'upper').map((s) => s.line.v), Lr + E], X, col, true);
+      col += R;
+    }
+    pen.chain([0, Lr, Lr + E], X, col, true);
+    pen.dim([X, 0], [X, Lr + E], [col + R, 0], true);
+    pen.dim([x0, Math.min(-F, 0)], [X, Math.min(-F, 0)], [x0, -F - R], false);
+  } else {
+    pen.dim([X, Lr], [X, Lr + E], [col, Lr], true);
+  }
+  pen.dim([-slabW, Lr], [-slabW, Lr + E], [-slabW - R * 0.8, Lr], true);
+
+  const bb = itemsBBox(pen.items);
+  const turn = p.LR ? 'left' : 'right';
+  titleBlock(pen, bb, 'PLAN', `${turn} turn, seen from above · dashed = hidden edges and riser faces${m.opening ? ' · orange = minimum floor opening' : ''}`);
+  return { items: pen.items, bbox: itemsBBox(pen.items) };
+}
+
+// ============================================================ elevation
+// Seen from the open side of the lower flight (looking along +y): x to the right, z up.
+function drawElevation(m) {
+  const { p, steps, risers, stringers, landing, Lr, x0, R, G, Lc, U, theta } = m;
+  const X = p.X, E = p.E, F = p.F, Z = p.Z, C = p.C, P = p.P, Y = p.Y;
+  const pen = new Pen(m.mirror, X);
+  const slabW = 500;
+  const items = [];
+  const add = (poly, depth, fill, vis = 'outline') => items.push({ poly, depth, fill, vis, hid: null });
+
+  // upper floor slab (section)
+  const slabR = [-slabW, Y - p.slab, 0, Y];
+  add(rectPoly(slabR), -1e9, 'fillSlab');
+  // treads and risers
+  for (const s of steps) {
+    if (s.kind === 'upper') add(rectPoly([s.rect[0], s.bot, s.rect[2], s.top]), Lr, 'fillTread');
+    else add(rectPoly([x0, s.bot, X, s.top]), s.rect[1], 'fillTread');
+  }
+  for (const r of risers) {
+    if (r.ax === 'x') add(rectPoly([r.rect[0], r.z0, r.rect[2], r.z1]), Lr, 'fillRiser');
+    else add(rectPoly([x0, r.z0, X, r.z1]), r.v, 'fillRiser');
+  }
+  // upper flight: near stringer in side view
+  const su = stringers.find((s) => s.flight === 'upper' && s.side === 'inner');
+  add(su.poly.map(([s, z]) => [x0 - s, z]), su.a0, 'fillStringer');
+  // lower flight seen end-on: stringer riser cuts show through open risers
+  for (const st of stringers.filter((s) => s.flight === 'lower')) {
+    for (let t = 1; t <= Lc; t++) {
+      const za = t === 1 ? 0 : (t - 1) * R - Z, zb = t * R - Z;
+      add(rectPoly([st.a0, za, st.a1, zb]), m.trH + (t - 1) * G, 'fillStringer');
+    }
+  }
+  // landing frame and posts
+  const front = landing.rims[0];
+  add(rectPoly([x0, front.z0, X, front.z1]), landing.ly0, 'fillPost');
+  for (const po of landing.posts.filter((q) => q.tag === 'inner' || q.tag === 'front')) {
+    add(rectPoly([po.rect[0], 0, po.rect[2], po.z1]), landing.ly0, 'fillPost');
+  }
+
+  // painter fill (far to near), then visible edges
+  for (const it of [...items].sort((a, b) => b.depth - a.depth)) pen.fill(it.poly, it.fill);
+  pen.hatchRect(slabR, 3.2 * SCALE, 'hatch');
+  for (const sg of hlr(items)) pen.line(sg.a, sg.b, sg.layer);
+
+  // floor
+  pen.line([-slabW - 200, 0], [X + 200, 0], 'outline');
+
+  // pitch angle at the foot of the upper stringer, in the empty space below it
+  const foot = su.poly.reduce((best, q) => (q[0] < 1e-6 && (!best || q[1] < best[1]) ? q : best), null) || [0, P * R];
+  const A = [x0 - foot[0], foot[1]];
+  const rA = 9 * SCALE;
+  pen.line(A, [A[0] - rA - 4 * SCALE, A[1]], 'help');
+  pen.arc(A, rA, Math.PI - theta, Math.PI, 'dims');
+  const mid = Math.PI - theta / 2;
+  pen.text(`${deg(theta).toFixed(1)}°`, [A[0] + (rA + 2.4 * SCALE) * Math.cos(mid) - 2.6 * SCALE, A[1] + (rA + 1.2 * SCALE) * Math.sin(mid) - 1.6 * SCALE], TX.dim, { layer: 'dims', align: 'MR', flip: true });
+
+  // dimensions
+  const Rr = DIM.row;
+  const CR = C * R;
+  let col = X + Rr;
+  if (p.stepDims) {
+    pen.chain(Array.from({ length: C + 1 }, (_, i) => i * R), X, col, true);
+    col += Rr;
+  }
+  pen.chain([0, P * R, CR], X, col, true);
+  if (Math.abs(CR - Y) > 0.5) pen.dim([X, 0], [X, CR], [col + Rr, 0], true);
+  pen.dim([-slabW, 0], [-slabW, Y], [-slabW - Rr * 0.9, 0], true);
+  let row = Y + Rr;
+  if (p.stepDims) {
+    pen.chain([...steps.filter((s) => s.kind === 'upper').map((s) => s.line.v), 0, X], Y, row, false);
+    row += Rr;
+  }
+  pen.chain([0, x0, X], Y, row, false);
+  pen.dim([0, Y], [X, Y], [0, row + Rr]);
+
+  const bb = itemsBBox(pen.items);
+  titleBlock(pen, bb, 'ELEVATION', `seen from the open side of the lower flight · ${C} stairs, landing = step ${P}`);
+  return { items: pen.items, bbox: itemsBBox(pen.items) };
+}
+
+// ================================================================ sheet
+const SHEET_SCALES = [10, 15, 20, 25, 30, 40, 50, 75, 100];
+function buildSheet(m, plan, elev, date) {
+  const W = 420, Hs = 297, mg = 10;
+  const pen = { items: [] };
+  const L = (pts, layer, closed = false) => pen.items.push({ k: 'L', pts, closed, layer });
+  const T = (s, p, hgt, align = 'BL', layer = 'text') => pen.items.push({ k: 'T', s, p, h: hgt, align, rot: 0, layer });
+  L([[mg, mg], [W - mg, mg], [W - mg, Hs - mg], [mg, Hs - mg]], 'frame', true);
+
+  // views side by side above a 52 mm band for the table and the title block
+  const band = 54, gap = 14;
+  const availW = W - 2 * mg - 16 - gap, availH = Hs - 2 * mg - band - 12;
+  const wp = plan.bbox[2] - plan.bbox[0], hp = plan.bbox[3] - plan.bbox[1];
+  const we = elev.bbox[2] - elev.bbox[0], he = elev.bbox[3] - elev.bbox[1];
+  let s = SHEET_SCALES[SHEET_SCALES.length - 1];
+  for (const c of SHEET_SCALES) if ((wp + we) / c <= availW && Math.max(hp, he) / c <= availH) { s = c; break; }
+  const usedH = Math.max(hp, he) / s;
+  const top = Hs - mg - 6 - Math.max(0, (availH - usedH) / 2);
+  const usedW = (wp + we) / s + gap;
+  let x = mg + 8 + (availW + gap - usedW) / 2;
+  for (const v of [plan, elev]) {
+    const ox = x - v.bbox[0] / s, oy = top - v.bbox[3] / s;
+    pen.items.push(...mapItems(v.items, (q) => [ox + q[0] / s, oy + q[1] / s], 1 / s));
+    x += (v.bbox[2] - v.bbox[0]) / s + gap;
+  }
+
+  // band: key figures (left), title block (right)
+  const yb = mg + band;
+  L([[mg, yb], [W - mg, yb]], 'tb');
+  const p = m.p;
+  const c = (st) => m.checks.filter((k) => k.status === st).length;
+  const nf = c(FAIL), nw = c(WARN);
+  const lines = [
+    `Floor to floor Y ${fmtDim(p.Y)} · opening length X ${fmtDim(p.X)} · width E ${fmtDim(p.E)} · stair thickness Z ${p.Z} · nosing F ${p.F}`,
+    `${p.C} stairs (${m.Lc} + landing + ${m.U}) · ${m.N} rises × ${f1(m.R)} · going ${f1(m.G)} · pitch ${deg(m.theta).toFixed(1)}° · 2R + G = ${m.f2.toFixed(0)}`,
+    `Lower flight run ${fmtDim(m.Lr)} · landing ${fmtDim(p.E)} × ${fmtDim(p.E)} at +${fmtDim(p.P * m.R)} · top stair ${p.SP ? 'one rise below the floor' : 'level with the floor'} · risers ${p.H ? p.tr + ' mm' : 'open'}`,
+    `Stringers ${p.ts} × ${p.ws} cut, ${p.inset} in from the edges · landing frame ${p.ts} × ${Math.round(m.landing.fh)}${m.landing.posts.length ? ` on ${p.post} × ${p.post} posts` : ''}`,
+    `Rules (${PROFILES[p.profile]?.label || 'custom'}, YMa 1007/2017): ${nf ? `${nf} FAIL` : 'required checks pass'}${nw ? `, ${nw} WARN` : ''}` +
+      (nf ? ' – ' + m.checks.filter((k) => k.status === FAIL).map((k) => `${k.rule.toLowerCase()} ${k.value} (${k.limit})`).join('; ') : ''),
+  ];
+  lines.forEach((t, i) => T(t, [mg + 4, yb - 7 - i * 6.6], 3.0));
+  if (m.opening) T(`Minimum floor opening for ${p.headroom} headroom: ${m.opening.desc}.`, [mg + 4, yb - 7 - lines.length * 6.6], 3.0);
+
+  const tbw = 150, x0 = W - mg - tbw;
+  L([[x0, mg], [x0, yb]], 'tb');
+  L([[x0, mg + 18], [W - mg, mg + 18]], 'tb');
+  L([[x0 + 100, mg], [x0 + 100, mg + 18]], 'tb');
+  T((p.name || 'Stair').slice(0, 52), [x0 + 4, yb - 11], 5.2);
+  T(`L-stair, ${p.LR ? 'left' : 'right'} turn${p.notes ? ' · ' + p.notes.slice(0, 40) : ''}`, [x0 + 4, yb - 20], 3.2);
+  T(`Plan + elevation`, [x0 + 4, yb - 28], 3.2, 'BL', 'help');
+  T(`${p.drawnBy ? p.drawnBy + '   ' : ''}${date}`, [x0 + 4, mg + 7], 3.2);
+  T(`1:${s}  (A3)`, [x0 + 104, mg + 10], 3.4);
+  T('dimensions mm', [x0 + 104, mg + 4], 2.6, 'BL', 'help');
+  return { size: [W, Hs], items: pen.items, scale: s, bbox: [0, 0, W, Hs] };
+}
+
+// ============================================================= painters
+function styleOf(layer, pal) {
+  const L = LAYERS[layer] || LAYERS.outline;
+  return { L, col: pal[layer] !== undefined ? pal[layer] : pal.outline };
+}
+function baselineOf(it) {
+  // point on the text baseline for the requested vertical alignment
+  const r = ((it.rot || 0) * Math.PI) / 180;
+  const off = it.align[0] === 'M' ? 0.35 : it.align[0] === 'T' ? 0.72 : 0;
+  return [it.p[0] + Math.sin(r) * off * it.h, it.p[1] - Math.cos(r) * off * it.h];
+}
+const FONT_STACK = 'Arial, Helvetica, "Liberation Sans", sans-serif';
+
+// T = { a, b, k }:  device X = a + k·x,  Y = b − k·y
+// o = { lw: (paper mm) → px, dash: (paper mm) → px }
+function paintCanvas(ctx, items, T, pal, o) {
+  const { a, b, k } = T;
+  const X = (x) => a + k * x, Yd = (y) => b - k * y;
+  ctx.lineJoin = 'miter';
+  ctx.lineCap = 'butt';
+  for (const it of items) {
+    const { L, col } = styleOf(it.layer, pal);
+    if (!col) continue;
+    if (it.k === 'F') {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      for (const r of it.rings) {
+        ctx.moveTo(X(r[0][0]), Yd(r[0][1]));
+        for (let i = 1; i < r.length; i++) ctx.lineTo(X(r[i][0]), Yd(r[i][1]));
+        ctx.closePath();
+      }
+      ctx.fill('evenodd');
+    } else if (it.k === 'L' || it.k === 'C') {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = o.lw(L.lw || 0.25);
+      ctx.setLineDash(L.dash ? L.dash.map((d) => Math.max(d === 0 ? 1 : 1.2, o.dash(d))) : []);
+      ctx.beginPath();
+      if (it.k === 'L') {
+        ctx.moveTo(X(it.pts[0][0]), Yd(it.pts[0][1]));
+        for (let i = 1; i < it.pts.length; i++) ctx.lineTo(X(it.pts[i][0]), Yd(it.pts[i][1]));
+        if (it.closed) ctx.closePath();
+      } else ctx.arc(X(it.c[0]), Yd(it.c[1]), it.r * k, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (it.k === 'T') {
+      const size = it.h * k;
+      if (size < 3) continue;
+      const [bx, by] = baselineOf(it);
+      ctx.fillStyle = col;
+      ctx.font = `${size}px ${FONT_STACK}`;
+      ctx.textAlign = { L: 'left', C: 'center', R: 'right' }[it.align[1]] || 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.save();
+      ctx.translate(X(bx), Yd(by));
+      if (it.rot) ctx.rotate((-it.rot * Math.PI) / 180);
+      ctx.fillText(it.s, 0, 0);
+      ctx.restore();
+    }
+  }
+  ctx.setLineDash([]);
+}
+
+function hexRgb(c) {
+  if (!c) return [0, 0, 0];
+  let s = c.replace('#', '');
+  if (s.length === 3) s = s.split('').map((x) => x + x).join('');
+  return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+}
+// jsPDF, page in mm (y down); T maps drawing units to page mm
+function paintPdf(doc, items, T, pal) {
+  const { a, b, k } = T;
+  const X = (x) => a + k * x, Yd = (y) => b - k * y;
+  doc.setLineCap('butt');
+  doc.setLineJoin('miter');
+  for (const it of items) {
+    const { L, col } = styleOf(it.layer, pal);
+    if (!col) continue;
+    const [r, g, bl] = hexRgb(col);
+    if (it.k === 'F') {
+      doc.setFillColor(r, g, bl);
+      for (const ring of it.rings) {
+        doc.moveTo(X(ring[0][0]), Yd(ring[0][1]));
+        for (let i = 1; i < ring.length; i++) doc.lineTo(X(ring[i][0]), Yd(ring[i][1]));
+        doc.close();
+      }
+      doc.fill();
+    } else if (it.k === 'L' || it.k === 'C') {
+      doc.setDrawColor(r, g, bl);
+      doc.setLineWidth(L.lw || 0.25);
+      doc.setLineDashPattern(L.dash ? L.dash.map((d) => (d === 0 ? 0.1 : d)) : [], 0);
+      if (it.k === 'L') {
+        doc.moveTo(X(it.pts[0][0]), Yd(it.pts[0][1]));
+        for (let i = 1; i < it.pts.length; i++) doc.lineTo(X(it.pts[i][0]), Yd(it.pts[i][1]));
+        if (it.closed) doc.close();
+        doc.stroke();
+      } else doc.circle(X(it.c[0]), Yd(it.c[1]), it.r * k, 'S');
+    } else if (it.k === 'T') {
+      const sizeMm = it.h * k;
+      if (sizeMm < 0.6) continue;
+      doc.setFontSize((sizeMm * 72) / 25.4);
+      doc.setTextColor(r, g, bl);
+      const [bx, by] = baselineOf(it);
+      const w = doc.getTextWidth(it.s);
+      const fr = { L: 0, C: 0.5, R: 1 }[it.align[1]] ?? 0.5;
+      const rr = ((it.rot || 0) * Math.PI) / 180;
+      const px = X(bx) - Math.cos(rr) * w * fr, py = Yd(by) + Math.sin(rr) * w * fr;
+      doc.text(pdfSafe(it.s), px, py, it.rot ? { angle: it.rot } : undefined);
+    }
+  }
+  doc.setLineDashPattern([], 0);
+}
+function pdfSafe(s) { return s.replace(/[≤]/g, '<=').replace(/[≥]/g, '>=').replace(/[−]/g, '-'); }
+
+function toSVG(items, bbox, pal, unitsPerMm) {
+  // unitsPerMm: drawing units per printed mm (20 for model views at 1:20, 1 for a sheet)
+  const pad = unitsPerMm === 1 ? 0 : 6 * unitsPerMm;
+  const [x0, y0, x1, y1] = bbox;
+  const W = x1 - x0 + 2 * pad, H = y1 - y0 + 2 * pad;
+  const X = (x) => +(x - x0 + pad).toFixed(2), Yd = (y) => +(y1 - y + pad).toFixed(2);
+  const out = [];
+  out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W.toFixed(1)} ${H.toFixed(1)}" width="${(W / unitsPerMm).toFixed(1)}mm" height="${(H / unitsPerMm).toFixed(1)}mm">`);
+  out.push(`<rect width="100%" height="100%" fill="${pal.bg}"/>`);
+  for (const it of items) {
+    const { L, col } = styleOf(it.layer, pal);
+    if (!col) continue;
+    if (it.k === 'F') {
+      out.push(`<path d="${it.rings.map((r) => 'M' + r.map((q) => `${X(q[0])} ${Yd(q[1])}`).join('L') + 'Z').join('')}" fill="${col}" fill-rule="evenodd"/>`);
+    } else if (it.k === 'L' || it.k === 'C') {
+      const sw = (L.lw || 0.25) * unitsPerMm;
+      const da = L.dash ? ` stroke-dasharray="${L.dash.map((d) => (d === 0 ? 0.2 : d) * unitsPerMm).join(' ')}"` : '';
+      if (it.k === 'L') {
+        out.push(`<path d="M${it.pts.map((q) => `${X(q[0])} ${Yd(q[1])}`).join('L')}${it.closed ? 'Z' : ''}" fill="none" stroke="${col}" stroke-width="${sw}"${da}/>`);
+      } else out.push(`<circle cx="${X(it.c[0])}" cy="${Yd(it.c[1])}" r="${it.r}" fill="none" stroke="${col}" stroke-width="${sw}"${da}/>`);
+    } else if (it.k === 'T') {
+      const [bx, by] = baselineOf(it);
+      const anchor = { L: 'start', C: 'middle', R: 'end' }[it.align[1]] || 'middle';
+      const tf = it.rot ? ` transform="rotate(${-it.rot} ${X(bx)} ${Yd(by)})"` : '';
+      out.push(`<text x="${X(bx)}" y="${Yd(by)}" font-family="Arial, Helvetica, sans-serif" font-size="${it.h.toFixed(1)}" fill="${col}" text-anchor="${anchor}"${tf}>${esc(it.s)}</text>`);
+    }
+  }
+  out.push('</svg>');
+  return out.join('\n');
+}
+
+// DXF R12: model space, millimetres, layers / colours / linetypes
+function toDXF(items, bw) {
+  const out = [];
+  const g = (c, v) => out.push(String(c).padStart(3, ' '), typeof v === 'number' ? numD(v) : String(v));
+  const gi = (c, v) => out.push(String(c).padStart(3, ' '), String(Math.round(v)));
+  const used = [...new Set(items.filter((i) => !(LAYERS[i.layer] || {}).area).map((i) => i.layer))];
+  const LT = { DASHED: [2.4, -1.2], DASHED2: [1.2, -0.9], DASHDOT: [6, -1.5, 0, -1.5] };
+  const bb = itemsBBox(items);
+  g(0, 'SECTION'); g(2, 'HEADER');
+  g(9, '$ACADVER'); g(1, 'AC1009');
+  g(9, '$INSBASE'); g(10, 0); g(20, 0); g(30, 0);
+  g(9, '$EXTMIN'); g(10, bb[0]); g(20, bb[1]); g(30, 0);
+  g(9, '$EXTMAX'); g(10, bb[2]); g(20, bb[3]); g(30, 0);
+  g(9, '$LTSCALE'); g(40, 1);
+  g(9, '$INSUNITS'); gi(70, 4);
+  g(0, 'ENDSEC');
+  g(0, 'SECTION'); g(2, 'TABLES');
+  g(0, 'TABLE'); g(2, 'LTYPE'); gi(70, 4);
+  g(0, 'LTYPE'); g(2, 'CONTINUOUS'); gi(70, 0); g(3, 'Solid line'); gi(72, 65); gi(73, 0); g(40, 0);
+  for (const [name, pat] of Object.entries(LT)) {
+    const sc = pat.map((v) => v * SCALE);
+    g(0, 'LTYPE'); g(2, name); gi(70, 0); g(3, name); gi(72, 65); gi(73, sc.length); g(40, sc.reduce((s, v) => s + Math.abs(v), 0));
+    for (const v of sc) g(49, v);
+  }
+  g(0, 'ENDTAB');
+  g(0, 'TABLE'); g(2, 'LAYER'); gi(70, used.length + 1);
+  g(0, 'LAYER'); g(2, '0'); gi(70, 0); gi(62, 7); g(6, 'CONTINUOUS');
+  for (const l of used) {
+    const L = LAYERS[l] || LAYERS.outline;
+    g(0, 'LAYER'); g(2, 'STAIR-' + l.toUpperCase()); gi(70, 0); gi(62, bw ? 7 : (L.aci || 7)); g(6, L.lt || 'CONTINUOUS');
+  }
+  g(0, 'ENDTAB');
+  g(0, 'TABLE'); g(2, 'STYLE'); gi(70, 1);
+  g(0, 'STYLE'); g(2, 'STANDARD'); gi(70, 0); g(40, 0); g(41, 1); g(50, 0); gi(71, 0); g(42, 2.5); g(3, 'arial.ttf'); g(4, '');
+  g(0, 'ENDTAB');
+  g(0, 'ENDSEC');
+  g(0, 'SECTION'); g(2, 'BLOCKS'); g(0, 'ENDSEC');
+  g(0, 'SECTION'); g(2, 'ENTITIES');
+  for (const it of items) {
+    const L = LAYERS[it.layer] || {};
+    if (L.area) continue;
+    const ln = 'STAIR-' + it.layer.toUpperCase();
+    if (it.k === 'L') {
+      if (it.pts.length === 2 && !it.closed) {
+        g(0, 'LINE'); g(8, ln);
+        g(10, it.pts[0][0]); g(20, it.pts[0][1]); g(30, 0); g(11, it.pts[1][0]); g(21, it.pts[1][1]); g(31, 0);
+      } else {
+        g(0, 'POLYLINE'); g(8, ln); gi(66, 1); g(10, 0); g(20, 0); g(30, 0); gi(70, it.closed ? 1 : 0);
+        for (const q of it.pts) { g(0, 'VERTEX'); g(8, ln); g(10, q[0]); g(20, q[1]); g(30, 0); }
+        g(0, 'SEQEND'); g(8, ln);
+      }
+    } else if (it.k === 'C') {
+      g(0, 'CIRCLE'); g(8, ln); g(10, it.c[0]); g(20, it.c[1]); g(30, 0); g(40, it.r);
+    } else if (it.k === 'F') {
+      for (const ring of it.rings) {
+        for (let i = 1; i + 1 < ring.length; i++) {
+          const A = ring[0], B = ring[i], Cc = ring[i + 1];
+          g(0, 'SOLID'); g(8, ln);
+          g(10, A[0]); g(20, A[1]); g(30, 0); g(11, B[0]); g(21, B[1]); g(31, 0);
+          g(12, Cc[0]); g(22, Cc[1]); g(32, 0); g(13, Cc[0]); g(23, Cc[1]); g(33, 0);
+        }
+      }
+    } else if (it.k === 'T') {
+      const s = dxfText(it.s);
+      if (!s.trim()) continue;
+      const hx = { L: 0, C: 1, R: 2 }[it.align[1]] ?? 1, vx = { B: 0, M: 2, T: 3 }[it.align[0]] ?? 2;
+      g(0, 'TEXT'); g(8, ln);
+      g(10, it.p[0]); g(20, it.p[1]); g(30, 0); g(40, it.h * 0.72); g(1, s);
+      if (it.rot) g(50, it.rot);
+      g(7, 'STANDARD');
+      if (hx) gi(72, hx);
+      if (hx || vx) { g(11, it.p[0]); g(21, it.p[1]); g(31, 0); }
+      if (vx) gi(73, vx);
+    }
+  }
+  g(0, 'ENDSEC'); g(0, 'EOF');
+  return out.join('\r\n') + '\r\n';
+}
+function numD(v) {
+  if (!Number.isFinite(v)) return '0.0';
+  const s = String(Math.round(v * 1e5) / 1e5);
+  return s.includes('.') || s.includes('e') ? s : s + '.0';
+}
+function dxfText(s) {
+  const map = { '°': '%%d', '×': 'x', '–': '-', '—': '-', '−': '-', '·': '-', '≤': '<=', '≥': '>=' };
+  let out = '';
+  for (const ch of String(s)) {
+    if (map[ch] !== undefined) out += map[ch];
+    else {
+      const cp = ch.codePointAt(0);
+      if (cp < 32) continue;
+      out += cp < 127 ? ch : `\\U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+    }
+  }
+  return out;
+}
+
+// ============================================================ 3D model
+const WOOD = { tread: '#d8b37c', stringer: '#c99c62', post: '#bf9058', rail: '#c08f55' };
+function woodCanvas(base, seed) {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const x = c.getContext('2d');
+  x.fillStyle = base;
+  x.fillRect(0, 0, 512, 512);
+  let s = seed * 9973 + 7;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 90; i++) {
+    const y0 = rnd() * 512, amp = 2 + rnd() * 7, f = 0.004 + rnd() * 0.012, ph = rnd() * 6.28;
+    x.strokeStyle = rnd() < 0.7 ? `rgba(110,70,30,${0.05 + rnd() * 0.12})` : `rgba(255,240,215,${0.05 + rnd() * 0.1})`;
+    x.lineWidth = 0.6 + rnd() * 2.2;
+    x.beginPath();
+    for (let u = -10; u <= 522; u += 8) {
+      const v = y0 + Math.sin(u * f + ph) * amp + Math.sin(u * f * 3.1 + ph * 2) * amp * 0.25;
+      if (u === -10) x.moveTo(u, v);
+      else x.lineTo(u, v);
+    }
+    x.stroke();
+  }
+  return c;
+}
+
+class View3D {
+  constructor(host) {
+    this.host = host;
+    this.ready = false;
+    this.visible = false;
+    this.opts = { walls: true, walk: true };
+    this.framed = false;
+  }
+  init() {
+    const T = window.THREE;
+    this.T = T;
+    const r = new T.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    r.shadowMap.enabled = true;
+    r.shadowMap.type = T.PCFSoftShadowMap;
+    r.outputEncoding = T.sRGBEncoding;
+    r.domElement.className = 'gl';
+    this.renderer = r;
+    this.host.append(r.domElement);
+    this.scene = new T.Scene();
+    this.camera = new T.PerspectiveCamera(35, 1, 10, 200000);
+    this.controls = new T.OrbitControls(this.camera, r.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.12;
+    this.controls.screenSpacePanning = true;
+    this.controls.addEventListener('change', () => (this.dirty = true));
+    this.scene.add(new T.HemisphereLight(0xffffff, 0xb9b2a4, 0.78));
+    const sun = new T.DirectionalLight(0xffffff, 0.78);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 2;
+    this.sun = sun;
+    this.scene.add(sun, sun.target);
+    this.root = new T.Group();
+    this.scene.add(this.root);
+    this.tex = {};
+    this.ro = new ResizeObserver(() => this.resize());
+    this.ro.observe(this.host);
+    this.ready = true;
+    this.resize();
+    const loop = () => {
+      requestAnimationFrame(loop);
+      if (!this.visible) return;
+      const moved = this.controls.update();
+      if (moved || this.dirty) {
+        this.fadeWalls();
+        this.renderer.render(this.scene, this.camera);
+        this.dirty = false;
+      }
+    };
+    loop();
+  }
+  setTheme(dark) {
+    if (!this.ready) return;
+    this.scene.background = new this.T.Color(dark ? 0x15191c : 0xeef0ec);
+    this.dirty = true;
+  }
+  resize() {
+    if (!this.ready) return;
+    const w = this.host.clientWidth || 300, hh = this.host.clientHeight || 200;
+    this.renderer.setSize(w, hh, false);
+    this.renderer.domElement.style.width = w + 'px';
+    this.renderer.domElement.style.height = hh + 'px';
+    this.camera.aspect = w / hh;
+    this.camera.updateProjectionMatrix();
+    this.dirty = true;
+  }
+  show(on) {
+    this.visible = on;
+    if (on) { this.resize(); this.dirty = true; }
+  }
+  woodMat(key, rot = 0, perMm = false) {
+    const T = this.T;
+    if (!this.tex[key]) {
+      const t = new T.CanvasTexture(woodCanvas(WOOD[key], key.length * 7 + 3));
+      t.wrapS = t.wrapT = T.RepeatWrapping;
+      t.encoding = T.sRGBEncoding;
+      t.anisotropy = 4;
+      this.tex[key] = t;
+    }
+    const t = this.tex[key].clone();
+    t.needsUpdate = true;
+    t.center.set(0.5, 0.5);
+    t.rotation = rot;
+    if (perMm) t.repeat.set(1 / 900, 1 / 900);
+    return new T.MeshStandardMaterial({ map: t, roughness: 0.62, metalness: 0, side: T.DoubleSide });
+  }
+  setModel(m) {
+    const T = this.T;
+    for (const ch of [...this.root.children]) {
+      this.root.remove(ch);
+      ch.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) for (const mt of [].concat(o.material)) { if (mt.map) mt.map.dispose(); mt.dispose(); }
+      });
+    }
+    const p = m.p, X = p.X, E = p.E, Y = p.Y, x0 = m.x0, Lr = m.Lr;
+    const grp = new T.Group();
+    if (m.mirror) { grp.scale.x = -1; grp.position.x = X; }
+    this.root.add(grp);
+    this.mx = m.mirror ? -1 : 1;
+    this.walls = [];
+    const edgeMat = new T.LineBasicMaterial({ color: 0x3a3026, transparent: true, opacity: 0.25 });
+    const addMesh = (geo, mat, name, opt = {}) => {
+      geo.computeVertexNormals();
+      const mesh = new T.Mesh(geo, mat);
+      mesh.name = name;
+      mesh.castShadow = opt.cast !== false;
+      mesh.receiveShadow = true;
+      if (opt.env) mesh.userData.env = true;
+      if (opt.pos) mesh.position.copy(opt.pos);
+      grp.add(mesh);
+      if (opt.edges !== false) {
+        const e = new T.LineSegments(new T.EdgesGeometry(geo, 25), edgeMat);
+        if (opt.pos) e.position.copy(opt.pos);
+        e.userData.env = true;
+        grp.add(e);
+        mesh.userData.edges = e;
+      }
+      return mesh;
+    };
+    // plan rect × height → box (world: X = x, Y = z, Z = −y)
+    const box = (r, z0, z1, mat, name, opt = {}) => {
+      if (z1 - z0 < 0.5 || r[2] - r[0] < 0.5 || r[3] - r[1] < 0.5) return null;
+      const geo = new T.BoxGeometry(r[2] - r[0], z1 - z0, r[3] - r[1]);
+      return addMesh(geo, mat, name, { ...opt, pos: new T.Vector3((r[0] + r[2]) / 2, (z0 + z1) / 2, -(r[1] + r[3]) / 2) });
+    };
+    // profile in (s, z) extruded across a0..a1 along A; s runs along dir from P0
+    const prism = (poly, P0, dir, A, a0, a1, mat, name, opt = {}) => {
+      const shape = new T.Shape(poly.map(([s, z]) => new T.Vector2(s, z)));
+      const geo = new T.ExtrudeGeometry(shape, { depth: a1 - a0, bevelEnabled: false });
+      const M = new T.Matrix4().set(
+        dir[0], 0, A[0], P0[0] + A[0] * a0,
+        0, 1, 0, 0,
+        -dir[1], 0, -A[1], -(P0[1] + A[1] * a0),
+        0, 0, 0, 1);
+      geo.applyMatrix4(M);
+      return addMesh(geo, mat, name, opt);
+    };
+    const paint = new T.MeshStandardMaterial({ color: 0xf4f2ec, roughness: 0.8, side: T.DoubleSide });
+    for (const s of m.steps) {
+      const rot = s.kind === 'upper' ? Math.PI / 2 : 0;
+      box(s.rect, s.bot, s.top, this.woodMat('tread', rot), s.kind === 'landing' ? 'landing_deck' : `tread_${s.k}`);
+    }
+    for (const r of m.risers) box(r.rect, r.z0, r.z1, paint, `riser_${r.k}`);
+    for (const st of m.stringers) prism(st.poly, st.P0, st.dir, st.A, st.a0, st.a1, this.woodMat('stringer', 0, true), `stringer_${st.flight}_${st.side}`);
+    const L = m.landing;
+    for (const rm of L.rims) box(rm.rect, rm.z0, rm.z1, this.woodMat('post'), `landing_rim_${rm.side}`);
+    const G = m.guard;
+    for (const po of L.posts) {
+      const top = G && po.tag === 'inner' ? G.newels.find((n) => n.tag === 'landing').z1 : po.z1;
+      box(po.rect, 0, top, this.woodMat('post', Math.PI / 2), `landing_post_${po.tag}`);
+    }
+    if (G) {
+      const white = new T.MeshStandardMaterial({ color: 0xf7f6f2, roughness: 0.7, side: T.DoubleSide });
+      for (const n of G.newels) if (n.tag !== 'landing' || !L.posts.length) box(n.rect, n.z0, n.z1, this.woodMat('post', Math.PI / 2), `newel_${n.tag}`);
+      G.balusters.forEach((b, i) => box(b.rect, b.z0, b.z1, white, `baluster_${i + 1}`, { edges: false }));
+      for (const rl of G.rails) prism(rl.poly, rl.P0, rl.dir, rl.A, rl.a0, rl.a1, this.woodMat('rail', 0, true), `handrail_${rl.flight}`);
+    }
+    // building: floor, upper slab beyond the opening, walls on the outer sides
+    const yMin = Math.min(-p.F, Lr - p.F) - 900;
+    const concrete = new T.MeshStandardMaterial({ color: 0xd3d6d1, roughness: 0.92, side: T.DoubleSide });
+    box([-900, Lr - 300, 0, Lr + E], Y - p.slab, Y, concrete, 'env_slab', { env: true });
+    const floor = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshStandardMaterial({ color: 0xcfd2cc, roughness: 1 }));
+    const fx0 = -1700, fx1 = X + 900, fy0 = yMin - 600, fy1 = Lr + E + 200;
+    floor.scale.set(fx1 - fx0, fy1 - fy0, 1);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set((fx0 + fx1) / 2, -0.5, -(fy0 + fy1) / 2);
+    floor.receiveShadow = true;
+    floor.userData.env = true;
+    grp.add(floor);
+    const wallMat = () => new T.MeshStandardMaterial({ color: 0xe2e4e0, roughness: 0.95, transparent: true, opacity: 1, side: T.DoubleSide });
+    const back = box([-900, Lr + E, X + 150, Lr + E + 150], 0, Y + 300, wallMat(), 'env_wall_back', { env: true, edges: false });
+    const side = box([X, yMin, X + 150, Lr + E], 0, Y + 300, wallMat(), 'env_wall_side', { env: true, edges: false });
+    back.userData.wall = { c: [X / 2, Lr + E], n: [0, 1] };
+    side.userData.wall = { c: [X, (yMin + Lr + E) / 2], n: [1, 0] };
+    this.walls = [back, side];
+    // walking line on the treads
+    {
+      const xc = x0 + E / 2, yc = Lr + E / 2, pts = [];
+      for (const s of m.steps) {
+        const z = s.top + 2;
+        if (s.kind === 'lower') pts.push(new T.Vector3(xc, z, -(s.line.v)), new T.Vector3(xc, z, -(s.line.v + m.G)));
+        else if (s.kind === 'landing') pts.push(new T.Vector3(xc, z, -Lr), new T.Vector3(xc, z, -yc), new T.Vector3(x0, z, -yc));
+        else pts.push(new T.Vector3(s.line.v, z, -yc), new T.Vector3(s.line.v - m.G, z, -yc));
+      }
+      const geo = new T.BufferGeometry().setFromPoints(pts);
+      const line = new T.Line(geo, new T.LineDashedMaterial({ color: 0xd42a1e, dashSize: 110, gapSize: 50 }));
+      line.computeLineDistances();
+      line.userData.env = true;
+      grp.add(line);
+      this.walk = line;
+    }
+    grp.updateMatrixWorld(true);
+    // light and shadow camera around the stair
+    const bbx = new T.Box3();
+    grp.traverse((o) => { if (o.isMesh && !o.userData.env) bbx.expandByObject(o); });
+    bbx.expandByPoint(new T.Vector3(this.mx > 0 ? 0 : X, Y, -(Lr + E)));
+    this.stairBox = bbx;
+    const c = bbx.getCenter(new T.Vector3());
+    const size = bbx.getSize(new T.Vector3()).length();
+    this.sun.position.set(c.x - this.mx * size * 0.45, c.y + size * 0.95, c.z + size * 0.7);
+    this.sun.target.position.copy(c);
+    const sc = this.sun.shadow.camera;
+    sc.left = sc.bottom = -size * 0.8;
+    sc.right = sc.top = size * 0.8;
+    sc.near = 10;
+    sc.far = size * 4;
+    sc.updateProjectionMatrix();
+    this.group = grp;
+    this.applyOpts();
+    if (!this.framed || this.lastMirror !== m.mirror) { this.view('iso'); this.framed = true; }
+    this.lastMirror = m.mirror;
+    this.dirty = true;
+  }
+  applyOpts() {
+    if (!this.ready) return;
+    for (const w of this.walls || []) w.visible = this.opts.walls;
+    if (this.walk) this.walk.visible = this.opts.walk;
+    this.dirty = true;
+  }
+  fadeWalls() {
+    const cam = this.camera.position;
+    for (const w of this.walls || []) {
+      const d = w.userData.wall;
+      if (!d) continue;
+      // plan → world: x' = mx·x (+X when mirrored), z' = −y
+      const cx = this.mx > 0 ? d.c[0] : this.group.position.x - d.c[0];
+      const wx = cam.x - cx, wy = -cam.z - d.c[1];
+      const behind = this.mx * d.n[0] * wx + d.n[1] * wy > 0;
+      const op = behind ? 0.1 : 1;
+      if (w.material.opacity !== op) {
+        w.material.opacity = op;
+        w.material.depthWrite = op === 1;
+        w.castShadow = op === 1;
+      }
+    }
+  }
+  view(kind) {
+    if (!this.ready || !this.stairBox) return;
+    const T = this.T;
+    const c = this.stairBox.getCenter(new T.Vector3());
+    const r = this.stairBox.getSize(new T.Vector3()).length() / 2;
+    const dist = (r / Math.sin((this.camera.fov * Math.PI) / 360)) * (kind === 'top' ? 1.0 : 1.12);
+    let dir;
+    if (kind === 'top') dir = new T.Vector3(0.0001, 1, 0.0001);
+    else if (kind === 'front') dir = new T.Vector3(0, 0.12, 1);
+    else if (kind === 'side') dir = new T.Vector3(-this.mx, 0.12, 0);
+    else dir = new T.Vector3(-0.38 * this.mx, 0.5, 0.86);
+    dir.normalize();
+    this.camera.position.copy(c).addScaledVector(dir, dist);
+    this.camera.near = dist / 100;
+    this.camera.far = dist * 20;
+    this.camera.updateProjectionMatrix();
+    this.controls.target.copy(c);
+    this.controls.update();
+    this.dirty = true;
+  }
+  snapshot() {
+    this.renderer.render(this.scene, this.camera);
+    return this.renderer.domElement;
+  }
+  toOBJ(meta) {
+    const T = this.T;
+    const out = [`# ${meta}`, '# units: millimetres, Y up', ''];
+    let off = 1;
+    const v = new T.Vector3();
+    this.group.updateMatrixWorld(true);
+    this.group.traverse((o) => {
+      if (!o.isMesh || o.userData.env || !o.visible) return;
+      const geo = o.geometry, pos = geo.attributes.position, idx = geo.index;
+      const mw = o.matrixWorld, flip = mw.determinant() < 0;
+      out.push(`o ${o.name || 'part'}`);
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mw);
+        out.push(`v ${v.x.toFixed(2)} ${v.y.toFixed(2)} ${v.z.toFixed(2)}`);
+      }
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i < n; i += 3) {
+        const a = (idx ? idx.getX(i) : i) + off, b = (idx ? idx.getX(i + 1) : i + 1) + off, c = (idx ? idx.getX(i + 2) : i + 2) + off;
+        out.push(flip ? `f ${a} ${c} ${b}` : `f ${a} ${b} ${c}`);
+      }
+      off += pos.count;
+    });
+    return out.join('\n') + '\n';
+  }
+}
+
+// ============================================================ app state
+const STORE = 'l-stair-designer:v1';
+const CDN = {
+  three: ['https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
+    'https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js'],
+  jspdf: ['https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'],
+};
+const loaded = {};
+function loadLib(name) {
+  if (loaded[name]) return loaded[name];
+  loaded[name] = CDN[name].reduce((chain, src) => chain.then(() => new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.async = false;
+    s.onload = res;
+    s.onerror = () => rej(new Error(`could not load ${src.split('/npm/')[1] || src}`));
+    document.head.append(s);
+  })), Promise.resolve()).catch((e) => { delete loaded[name]; throw e; });
+  return loaded[name];
+}
+
+const S = { params: null, m: null, error: null, view: 'plan', dark: false, history: [], future: [], committed: null, drawings: null };
+
+function store(key, val) {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORE) || '{}');
+    all[key] = val;
+    localStorage.setItem(STORE, JSON.stringify(all));
+  } catch (e) { /* storage unavailable */ }
+}
+function stored(key) {
+  try { return JSON.parse(localStorage.getItem(STORE) || '{}')[key]; } catch (e) { return undefined; }
+}
+function isDarkUI() {
+  const t = document.documentElement.dataset.theme;
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function screenPalette() {
+  const dark = S.dark;
+  if (S.params && S.params.BW) return dark ? PALETTES.bwDark : PALETTES.bw;
+  return dark ? PALETTES.colorDark : PALETTES.color;
+}
+function printPalette() { return S.params.BW ? PALETTES.bw : PALETTES.color; }
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.classList.remove('on'); setTimeout(() => (t.hidden = true), 250); }, 2600);
+}
+function download(filename, data, type = 'application/octet-stream') {
+  const blob = data instanceof Blob ? data : new Blob([data], { type });
+  const a = h('a', { href: URL.createObjectURL(blob), download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast(`Saved ${filename}`);
+}
+
+// ================================================================= form
+const fields = [];
+function buildForm() {
+  const host = $('#form');
+  host.textContent = '';
+  const openIds = stored('openGroups') || ['opening', 'steps'];
+  for (const sec of SCHEMA) {
+    const body = h('div', { class: 'grp-body' });
+    for (const f of sec.fields) body.append(fieldRow(f));
+    const det = h('details', { class: 'grp' + (sec.adv ? ' adv' : ''), 'data-id': sec.id, open: openIds.includes(sec.id) },
+      h('summary', {}, h('span', { text: sec.title + (sec.id === 'opening' ? ', mm' : '') })), body);
+    det.addEventListener('toggle', () => store('openGroups', $$('#form details[open]').map((d) => d.dataset.id)));
+    host.append(det);
+  }
+}
+function labelOf(f, id) {
+  return h('label', { class: 'lab', for: id }, f.label, f.code ? h('b', { class: 'code', text: f.code }) : null);
+}
+function fieldRow(f) {
+  const id = 'f_' + f.k;
+  const row = h('div', { class: 'fld fld-' + (f.type || 'num'), 'data-key': f.k });
+  const set = (v, now = false) => {
+    S.params[f.k] = v;
+    if (f.k === 'profile' && PROFILES[v] && v !== 'custom') {
+      S.params.maxRise = PROFILES[v].maxRise;
+      S.params.minGoing = PROFILES[v].minGoing;
+      syncForm();
+    }
+    refreshWhen();
+    schedule(now ? 0 : 120);
+    if (now) commit();
+  };
+  let ctl, read;
+  if (f.type === 'bool') {
+    const inp = h('input', { type: 'checkbox', id, class: 'sw', onchange: (e) => set(e.target.checked, true) });
+    ctl = inp;
+    read = (v) => (inp.checked = !!v);
+    row.append(labelOf(f, id), h('span', { class: 'ctl' }, inp));
+  } else if (f.type === 'select') {
+    const sel = h('select', { id, onchange: (e) => set(e.target.value, true) }, f.options.map(([v, lab]) => h('option', { value: v, text: lab })));
+    ctl = sel;
+    read = (v) => (sel.value = v);
+    row.append(labelOf(f, id), h('span', { class: 'ctl' }, sel));
+  } else if (f.type === 'text') {
+    const inp = h('input', { type: 'text', id, spellcheck: 'false', oninput: (e) => set(e.target.value), onchange: () => commit() });
+    ctl = inp;
+    read = (v) => (inp.value = v);
+    row.append(labelOf(f, id), h('span', { class: 'ctl' }, inp));
+  } else {
+    const isInt = f.type === 'int';
+    const inp = h('input', {
+      type: 'number', id, inputmode: isInt ? 'numeric' : 'decimal', step: 1, min: f.min, max: f.max,
+      oninput: (e) => {
+        const v = Number(e.target.value);
+        const bad = e.target.value === '' || !Number.isFinite(v) || (f.min !== undefined && v < f.min) || (f.max !== undefined && v > f.max);
+        row.classList.toggle('bad', bad);
+        if (!bad) set(isInt ? Math.round(v) : v);
+      },
+      onchange: () => commit(),
+    });
+    ctl = inp;
+    read = (v) => { inp.value = v; row.classList.remove('bad'); };
+    row.append(labelOf(f, id), h('span', { class: 'ctl num' }, inp, f.unit ? h('span', { class: 'unit', text: f.unit }) : null));
+  }
+  let hintEl = null;
+  if (f.hint) { hintEl = h('p', { class: 'hint' }); row.append(hintEl); }
+  fields.push({ f, row, ctl, read, hintEl });
+  return row;
+}
+function syncForm() {
+  for (const { f, read } of fields) read(S.params[f.k]);
+  refreshWhen();
+  markPreset();
+}
+function refreshWhen() {
+  for (const { f, row, ctl, hintEl } of fields) {
+    const on = !f.when || f.when(S.params);
+    row.classList.toggle('off', !on);
+    ctl.disabled = !on;
+    if (hintEl) hintEl.textContent = typeof f.hint === 'function' ? f.hint(S.params) : f.hint;
+  }
+}
+function presetOf(p) {
+  const j = JSON.stringify(normalize(p));
+  for (const [k, v] of Object.entries(PRESETS)) if (JSON.stringify(normalize(v)) === j) return k;
+  return null;
+}
+function markPreset() {
+  const cur = presetOf(S.params);
+  $$('.preset').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.preset === cur)));
+}
+
+// ------------------------------------------------------------- history
+function commit() {
+  const j = JSON.stringify(S.params);
+  if (j === S.committed) return;
+  if (S.committed) S.history.push(S.committed);
+  if (S.history.length > 100) S.history.shift();
+  S.committed = j;
+  S.future = [];
+  updateUndo();
+  markPreset();
+}
+function undo() {
+  if (!S.history.length) return;
+  S.future.push(JSON.stringify(S.params));
+  S.committed = S.history.pop();
+  S.params = JSON.parse(S.committed);
+  syncForm();
+  rebuild();
+  updateUndo();
+}
+function redo() {
+  if (!S.future.length) return;
+  S.history.push(JSON.stringify(S.params));
+  S.committed = S.future.pop();
+  S.params = JSON.parse(S.committed);
+  syncForm();
+  rebuild();
+  updateUndo();
+}
+function updateUndo() {
+  $('#undo').disabled = !S.history.length;
+  $('#redo').disabled = !S.future.length;
+}
+function loadParams(p, note) {
+  S.params = normalize(p);
+  commit();
+  syncForm();
+  rebuild();
+  if (note) toast(note);
+}
+
+// ------------------------------------------------------------ pipeline
+let timer = null;
+function schedule(delay = 120) {
+  clearTimeout(timer);
+  timer = setTimeout(rebuild, delay);
+}
+function rebuild() {
+  clearTimeout(timer);
+  const m = compute(S.params);
+  const msg = $('#formMsg');
+  if (m.errors) {
+    msg.hidden = false;
+    msg.innerHTML = m.errors.map((e) => `<p class="m-fail">${esc(e)}</p>`).join('');
+    return fail(m.errors.join(' '));
+  }
+  msg.hidden = !m.warnings.length;
+  msg.innerHTML = m.warnings.map((w) => `<p class="m-warn">${esc(w)}</p>`).join('');
+  const prev = S.m;
+  S.m = m;
+  S.error = null;
+  S.drawings = { plan: drawPlan(m), elev: drawElevation(m), sheet: null };
+  document.body.classList.remove('has-error');
+  $('#stageError').hidden = true;
+  renderHeader(prev);
+  renderRules();
+  renderView(true);
+  store('params', S.params);
+}
+function fail(msg) {
+  S.error = msg;
+  document.body.classList.add('has-error');
+  const el = $('#stageError');
+  el.hidden = false;
+  el.innerHTML = `<strong>This stair can't be drawn yet.</strong> ${esc(msg)}`;
+  $('#tbVerdict').className = 'tb-cell tb-verdict v-fail';
+  $('#tbVerdictVal').textContent = 'Check inputs';
+  $('#tbVerdictSub').textContent = 'see the message';
+}
+function sheetOf() {
+  if (!S.drawings.sheet) S.drawings.sheet = buildSheet(S.m, S.drawings.plan, S.drawings.elev, today());
+  return S.drawings.sheet;
+}
+function today() {
+  const d = new Date(), z = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+
+// --------------------------------------------------------------- header
+function counts(checks) {
+  const c = { PASS: 0, FAIL: 0, WARN: 0, INFO: 0 };
+  for (const x of checks) c[x.status]++;
+  return c;
+}
+function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+function renderHeader(prev) {
+  const m = S.m, p = m.p;
+  const set = (id, val, sub, state) => {
+    const el = $('#' + id), v = $('.val', el);
+    if (prev && v.textContent !== val) flash(el);
+    v.textContent = val;
+    $('.sub', el).textContent = sub;
+    el.dataset.state = state || '';
+  };
+  $('#tbProject').textContent = p.name || 'Stair';
+  $('#tbProjectSub').textContent = `${p.LR ? 'Left' : 'Right'} turn · landing at step ${p.P} (+${fmtDim(p.P * m.R)})`;
+  set('tbRise', `${m.N} × ${f1(m.R)}`, `floor to floor ${fmtDim(p.Y)}`, m.R > p.maxRise + 0.05 ? 'bad' : 'ok');
+  set('tbGoing', f1(m.G), `${m.Lc} + landing + ${m.U} treads`, m.G < p.minGoing - 0.05 ? 'bad' : 'ok');
+  set('tbPitch', `${deg(m.theta).toFixed(1)}°`, `2R + G = ${m.f2.toFixed(0)}`);
+  const c = counts(m.checks), v = $('#tbVerdict');
+  v.className = 'tb-cell tb-verdict ' + (c.FAIL ? 'v-fail' : c.WARN ? 'v-warn' : 'v-pass');
+  const val = c.FAIL ? `${c.FAIL} rule${c.FAIL > 1 ? 's' : ''} fail` : 'Rules pass';
+  if (prev && $('#tbVerdictVal').textContent !== val) flash(v);
+  $('#tbVerdictVal').textContent = val;
+  $('#tbVerdictSub').textContent = `${c.WARN ? `${c.WARN} warning${c.WARN > 1 ? 's' : ''} · ` : ''}YMa 1007/2017`;
+}
+
+// ---------------------------------------------------------- rules panel
+const STATUS_TXT = { PASS: 'Pass', FAIL: 'Fail', WARN: 'Warn', INFO: 'Info' };
+function checkItem(c, ref = true) {
+  return `<li class="chk s-${c.status.toLowerCase()}">
+    <span class="badge">${STATUS_TXT[c.status]}</span>
+    <span class="rule">${esc(c.rule)}</span>
+    <span class="vl"><span class="v">${esc(c.value)}</span><span class="l">${esc(c.limit)}</span></span>
+    ${c.note ? `<span class="note">${esc(c.note)}</span>` : ''}
+    ${ref && !['info', 'construction'].includes(c.ref) ? `<span class="ref">${esc(c.ref)}</span>` : ''}
+  </li>`;
+}
+function renderRules() {
+  const m = S.m, p = m.p, c = counts(m.checks);
+  const head = c.FAIL
+    ? `<p class="verdict v-fail"><strong>${c.FAIL} required check${c.FAIL > 1 ? 's' : ''} fail${c.FAIL > 1 ? '' : 's'}</strong>${c.WARN ? `, ${c.WARN} warning${c.WARN > 1 ? 's' : ''}` : ''}</p>`
+    : `<p class="verdict v-pass"><strong>All required checks pass</strong>${c.WARN ? `, ${c.WARN} warning${c.WARN > 1 ? 's' : ''}` : ''}</p>`;
+  let sug = '';
+  const sg = m.suggestion;
+  if (sg && sg.tooShort) {
+    sug = `<div class="suggest"><p>No layout passes with this opening: the upper flight needs X of at least ${fmtDim(sg.Xmin)} for one ${p.minGoing} going.</p></div>`;
+  } else if (sg) {
+    sug = `<div class="suggest"><p><strong>Passes rise and going here:</strong> C ${sg.C}, P ${sg.P} → ${p.SP ? sg.C + 1 : sg.C} × ${f1(sg.R)}, going ${f1(sg.G)}, 2R + G ${sg.f.toFixed(0)}. Lower flight becomes ${fmtDim(sg.Lr)} long.</p>
+      <button class="btn primary" type="button" data-apply="${sg.C},${sg.P}">Apply C ${sg.C}, P ${sg.P}</button></div>`;
+  }
+  const order = { FAIL: 0, WARN: 1, PASS: 2, INFO: 3 };
+  const sorted = [...m.checks].sort((a, b) => order[a.status] - order[b.status]);
+  const rows = m.steps.map((s) => {
+    const where = s.kind === 'upper' ? `x ${fmtDim(s.line.v)}` : `y ${fmtDim(s.line.v)}`;
+    return `<tr class="${s.kind === 'landing' ? 'landing' : ''}"><td>${s.k}</td><td>${s.kind === 'landing' ? 'landing' : s.kind}</td><td class="n">${f1(s.top)}</td><td class="n">${where}</td></tr>`;
+  }).join('');
+  $('#rulesBody').innerHTML = `${head}${sug}
+    <ul class="chks">${sorted.map((x) => checkItem(x)).join('')}</ul>
+    <h3>Construction</h3>
+    <ul class="chks">${m.cons.map((x) => checkItem(x, false)).join('')}</ul>
+    <h3>Steps</h3>
+    <div class="tbl"><table><thead><tr><th>Step</th><th>Type</th><th class="n">Top +</th><th class="n">Riser line</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="fine">Riser lines: lower flight y from its first riser, upper flight x from the slab edge. ${esc(PROFILES[p.profile]?.note || '')}. Interpretation and exceptions: check with the local building control (rakennusvalvonta).</p>`;
+  $('#rulesTabCount').textContent = c.FAIL ? String(c.FAIL) : '';
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-apply]');
+  if (!b) return;
+  const [C, P] = b.dataset.apply.split(',').map(Number);
+  loadParams({ ...S.params, C, P }, `Applied C ${C}, P ${P}`);
+});
+
+// ---------------------------------------------------------- canvas view
+class CanvasView {
+  constructor(host) {
+    this.host = host;
+    this.cv = h('canvas', { class: 'cv', tabindex: '0', 'aria-label': 'Drawing. Drag to pan, scroll or pinch to zoom, double-click to fit.' });
+    host.append(this.cv);
+    this.ctx = this.cv.getContext('2d');
+    this.content = null;
+    this.zoom = 1; this.cx = 0; this.cy = 0; this.fitted = true;
+    this.ptrs = new Map();
+    this.ro = new ResizeObserver(() => this.resize());
+    this.ro.observe(host);
+    this.bind();
+  }
+  bind() {
+    const cv = this.cv;
+    cv.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.zoomAt(e.offsetX, e.offsetY, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015)));
+    }, { passive: false });
+    cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); this.ptrs.set(e.pointerId, [e.offsetX, e.offsetY]); });
+    cv.addEventListener('pointermove', (e) => {
+      const prev = this.ptrs.get(e.pointerId);
+      this.readout(e.offsetX, e.offsetY);
+      if (!prev) return;
+      const cur = [e.offsetX, e.offsetY];
+      if (this.ptrs.size === 1) {
+        this.cx -= (cur[0] - prev[0]) / this.zoom;
+        this.cy += (cur[1] - prev[1]) / this.zoom;
+        this.fitted = false;
+        this.paint();
+      } else if (this.ptrs.size === 2) {
+        const other = [...this.ptrs.entries()].find(([id]) => id !== e.pointerId)[1];
+        const d0 = Math.hypot(prev[0] - other[0], prev[1] - other[1]), d1 = Math.hypot(cur[0] - other[0], cur[1] - other[1]);
+        if (d0 > 2) this.zoomAt((cur[0] + other[0]) / 2, (cur[1] + other[1]) / 2, d1 / d0);
+      }
+      this.ptrs.set(e.pointerId, cur);
+    });
+    const up = (e) => this.ptrs.delete(e.pointerId);
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+    cv.addEventListener('pointerleave', () => ($('#coords').textContent = ''));
+    cv.addEventListener('dblclick', () => this.fit());
+    cv.addEventListener('keydown', (e) => {
+      if (e.key === '+' || e.key === '=') this.zoomAt(this.w / 2, this.h / 2, 1.25);
+      else if (e.key === '-') this.zoomAt(this.w / 2, this.h / 2, 0.8);
+      else if (e.key === '0') this.fit();
+      else return;
+      e.preventDefault();
+    });
+  }
+  readout(x, y) {
+    if (!this.content) return;
+    const X = this.cx + (x - this.w / 2) / this.zoom, Y = this.cy - (y - this.h / 2) / this.zoom;
+    $('#coords').textContent = this.content.kind === 'sheet' ? `${X.toFixed(0)}, ${Y.toFixed(0)} mm on the sheet` : `x ${X.toFixed(0)}   ${this.content.key === 'elev' ? 'z' : 'y'} ${Y.toFixed(0)}`;
+  }
+  zoomAt(x, y, f) {
+    const X = this.cx + (x - this.w / 2) / this.zoom, Y = this.cy - (y - this.h / 2) / this.zoom;
+    this.zoom = Math.min(Math.max(this.zoom * f, this.minZoom || 1e-4), 80);
+    this.cx = X - (x - this.w / 2) / this.zoom;
+    this.cy = Y + (y - this.h / 2) / this.zoom;
+    this.fitted = false;
+    this.paint();
+  }
+  resize() {
+    const r = this.host.getBoundingClientRect();
+    this.w = Math.max(1, r.width);
+    this.h = Math.max(1, r.height);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    this.cv.width = Math.round(this.w * dpr);
+    this.cv.height = Math.round(this.h * dpr);
+    this.cv.style.width = this.w + 'px';
+    this.cv.style.height = this.h + 'px';
+    this.dpr = dpr;
+    if (this.fitted) this.fit(false);
+    this.paint();
+  }
+  set(content, dataChanged) {
+    const same = this.content && this.content.key === content.key;
+    this.content = content;
+    if (!same || this.fitted || !dataChanged) this.fit(false);
+    this.paint();
+  }
+  fit(paint = true) {
+    if (!this.content || this.w < 80 || this.h < 80) return;
+    const b = this.content.bbox, pad = Math.min(28, this.w / 10);
+    const top = 50; // room for the toolbar
+    const bw = Math.max(1, b[2] - b[0]), bh = Math.max(1, b[3] - b[1]);
+    this.zoom = Math.min((this.w - 2 * pad) / bw, (this.h - pad - top) / bh);
+    this.minZoom = this.zoom / 8;
+    this.cx = (b[0] + b[2]) / 2;
+    this.cy = (b[1] + b[3]) / 2 + (top - pad) / 2 / this.zoom;
+    this.fitted = true;
+    if (paint) this.paint();
+  }
+  paint() {
+    if (this.raf) return;
+    this.raf = requestAnimationFrame(() => { this.raf = null; this.draw(); });
+  }
+  draw(ctx = this.ctx, scale = this.dpr) {
+    if (!this.content || !(this.zoom > 0)) return;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    const k = this.zoom, a = this.w / 2 - this.cx * k, b = this.h / 2 + this.cy * k;
+    if (this.content.kind === 'sheet') {
+      ctx.fillStyle = isDarkUI() ? '#0d1012' : '#d9ddd8';
+      ctx.fillRect(0, 0, this.w, this.h);
+      const sh = this.content.sheet;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.25)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(a, b - sh.size[1] * k, sh.size[0] * k, sh.size[1] * k);
+      ctx.restore();
+      paintCanvas(ctx, sh.items, { a, b, k }, printPalette(), { lw: (w) => Math.max(0.5, w * k), dash: (d) => d * k });
+      return;
+    }
+    const pal = screenPalette();
+    ctx.fillStyle = pal.bg;
+    ctx.fillRect(0, 0, this.w, this.h);
+    paintCanvas(ctx, this.content.items, { a, b, k }, pal, { lw: (w) => Math.max(0.7, w * 3.3), dash: (d) => d * SCALE * k });
+  }
+  png() {
+    const c = document.createElement('canvas');
+    const sc = 2;
+    c.width = Math.round(this.w * sc);
+    c.height = Math.round(this.h * sc);
+    this.draw(c.getContext('2d'), sc);
+    return c;
+  }
+}
+
+// ---------------------------------------------------------------- views
+const VIEWS = [
+  { id: 'plan', label: 'Plan' },
+  { id: 'elev', label: 'Elevation' },
+  { id: '3d', label: '3D' },
+  { id: 'sheet', label: 'A3 sheet' },
+  { id: 'rules', label: 'Rules', narrow: true },
+  { id: 'data', label: 'Steps & cut list' },
+];
+let canvasView = null, view3d = null;
+function buildTabs() {
+  const nav = $('#tabs');
+  for (const v of VIEWS) {
+    nav.append(h('button', {
+      type: 'button', role: 'tab', id: 'tab_' + v.id, class: 'tab' + (v.narrow ? ' narrow-only' : ''), 'data-view': v.id,
+      'aria-controls': 'stage', onclick: () => setView(v.id),
+    }, h('span', { text: v.label }), v.id === 'rules' ? h('span', { class: 'cnt', id: 'rulesTabCount' }) : null));
+  }
+  nav.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const tabs = $$('.tab', nav).filter((t) => t.offsetParent !== null);
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    n.focus();
+    n.click();
+  });
+}
+function setView(id) {
+  S.view = id;
+  store('view', id);
+  $$('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === id)));
+  renderView(false);
+}
+function renderView(dataChanged) {
+  const id = S.view;
+  const isCanvas = ['plan', 'elev', 'sheet'].includes(id);
+  $('#cvHost').hidden = !isCanvas;
+  $('#glHost').hidden = id !== '3d';
+  $('#docHost').hidden = !['data', 'rules'].includes(id);
+  $('#cvBar').hidden = !isCanvas;
+  $('#glBar').hidden = id !== '3d';
+  $('#palBtn').hidden = id === 'sheet';
+  const how = $('#howto');
+  how.hidden = !(isCanvas || id === '3d');
+  how.textContent = id === '3d' ? 'Drag to orbit · right-drag or two fingers to pan · scroll to zoom' : 'Drag to pan · scroll or pinch to zoom · double-click to fit';
+  if (view3d) view3d.show(id === '3d');
+  if (!S.m || S.error) return;
+  if (isCanvas) {
+    if (!canvasView) canvasView = new CanvasView($('#cvHost'));
+    if (id === 'sheet') {
+      const sh = sheetOf();
+      canvasView.set({ kind: 'sheet', sheet: sh, bbox: sh.bbox, key: 'sheet' }, dataChanged);
+    } else {
+      const d = S.drawings[id];
+      canvasView.set({ kind: 'model', items: d.items, bbox: d.bbox, key: id }, dataChanged);
+    }
+  } else if (id === '3d') show3d();
+  else if (id === 'data') renderData();
+  else if (id === 'rules') {
+    const c = $('#rulesBody').cloneNode(true);
+    c.removeAttribute('id');
+    $('#docHost').textContent = '';
+    $('#docHost').append(h('div', { class: 'doc rules-doc' }, h('h2', { text: 'Rules check' }), c));
+  }
+}
+async function show3d() {
+  try {
+    if (!window.THREE || !window.THREE.OrbitControls) {
+      $('#glMsg').hidden = false;
+      $('#glMsg').textContent = 'Loading the 3D viewer…';
+      await loadLib('three');
+    }
+    $('#glMsg').hidden = true;
+    if (!view3d) {
+      view3d = new View3D($('#glHost'));
+      view3d.init();
+      view3d.opts = { ...view3d.opts, ...(stored('opts3d') || {}) };
+      syncGlBar();
+    }
+    view3d.setTheme(isDarkUI());
+    if (view3d.modelFor !== S.m) { view3d.setModel(S.m); view3d.modelFor = S.m; }
+    view3d.show(S.view === '3d');
+  } catch (e) {
+    console.error(e);
+    $('#glMsg').hidden = false;
+    $('#glMsg').textContent = `The 3D viewer could not start: ${e.message}. It needs an internet connection the first time.`;
+  }
+}
+function syncGlBar() {
+  if (!view3d) return;
+  $('#gl_walls').setAttribute('aria-pressed', String(!!view3d.opts.walls));
+  $('#gl_walk').setAttribute('aria-pressed', String(!!view3d.opts.walk));
+}
+function renderData() {
+  const m = S.m;
+  const steps = m.steps.map((s) => {
+    const going = s.kind === 'landing' ? `${fmtDim(m.p.E)} × ${fmtDim(m.p.E)}` : f1(m.G);
+    const where = s.kind === 'upper' ? `x ${fmtDim(s.line.v)} from the slab edge` : `y ${fmtDim(s.line.v)} from the first riser`;
+    return `<tr class="${s.kind === 'landing' ? 'landing' : ''}"><td>${s.k}</td><td>${s.kind === 'landing' ? 'landing' : s.kind + ' flight'}</td><td class="n">${f1(s.top)}</td><td class="n">${f1(s.bot)}</td><td class="n">${going}</td><td>${where}</td></tr>`;
+  }).join('');
+  const cut = m.cut.map((r) => `<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td><td class="n">${esc(fmtDim(Number(r[2])))}</td><td class="n">${esc(String(r[3]))}</td><td class="n">${esc(String(r[4]))}</td><td>${esc(r[5])}</td></tr>`).join('');
+  $('#docHost').innerHTML = `<div class="doc">
+    <div class="doc-head"><h2>Steps</h2></div>
+    <div class="tbl"><table><thead><tr><th>Step</th><th>Where</th><th class="n">Top +</th><th class="n">Underside +</th><th class="n">Going</th><th>Riser line (front face)</th></tr></thead><tbody>${steps}</tbody></table></div>
+    <p class="fine">${m.N} rises × ${f1(m.R)} = ${fmtDim(m.p.Y)}. ${m.p.SP ? 'The last rise goes up to the upper floor at the slab edge.' : 'The top stair is level with the upper floor.'}</p>
+    <div class="doc-head"><h2>Cut list</h2><button class="btn" id="cutCsv" type="button">Download CSV</button></div>
+    <div class="tbl"><table class="cut"><thead><tr><th>Part</th><th class="n">Qty</th><th class="n">Length</th><th class="n">Width</th><th class="n">Thick</th><th>Notes</th></tr></thead><tbody>${cut}</tbody></table></div>
+    <p class="fine">Net sizes in mm. Stringer length is the board length along the pitch; cut the profile from the elevation or the DXF.</p>
+  </div>`;
+  $('#cutCsv').addEventListener('click', () => exportOne('csv'));
+}
+
+// --------------------------------------------------------------- export
+function stem() {
+  const n = (S.params.name || 'stair').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48);
+  return n || 'stair';
+}
+function cutCsv() {
+  const head = ['Part', 'Qty', 'Length mm', 'Width mm', 'Thickness mm', 'Notes'];
+  const q = (v) => { const s = String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  return '﻿' + [head, ...S.m.cut].map((r) => r.map(q).join(';')).join('\r\n') + '\r\n';
+}
+async function exportOne(kind, btn) {
+  if (!S.m || S.error) { toast('Fix the inputs first – the stair can’t be drawn yet.'); return; }
+  const s = stem();
+  if (btn) btn.classList.add('busy');
+  try {
+    if (kind === 'pdf') {
+      await loadLib('jspdf');
+      const sh = sheetOf();
+      const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true });
+      doc.setFont('helvetica', 'normal');
+      paintPdf(doc, sh.items, { a: 0, b: sh.size[1], k: 1 }, printPalette());
+      doc.setProperties({ title: S.params.name, creator: 'L-stair designer' });
+      download(`${s}_A3.pdf`, doc.output('blob'));
+    } else if (kind === 'dxf') {
+      const { plan, elev } = S.drawings;
+      const dx = plan.bbox[2] + 1500 - elev.bbox[0];
+      const items = [...plan.items, ...mapItems(elev.items, (q) => [q[0] + dx, q[1] + plan.bbox[1] - elev.bbox[1]])];
+      download(`${s}.dxf`, toDXF(items, S.params.BW), 'application/dxf');
+    } else if (kind === 'svg') {
+      const id = ['plan', 'elev', 'sheet'].includes(S.view) ? S.view : 'plan';
+      if (id === 'sheet') {
+        const sh = sheetOf();
+        download(`${s}_A3.svg`, toSVG(sh.items, sh.bbox, printPalette(), 1), 'image/svg+xml');
+      } else {
+        const d = S.drawings[id];
+        download(`${s}_${id === 'elev' ? 'elevation' : 'plan'}.svg`, toSVG(d.items, d.bbox, printPalette(), SCALE), 'image/svg+xml');
+      }
+    } else if (kind === 'png') {
+      let c;
+      if (S.view === '3d' && view3d) c = view3d.snapshot();
+      else {
+        if (!['plan', 'elev', 'sheet'].includes(S.view)) setView('plan');
+        c = canvasView.png();
+      }
+      const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+      download(`${s}_${S.view === '3d' ? '3d' : S.view}.png`, blob, 'image/png');
+    } else if (kind === 'obj') {
+      if (!view3d || view3d.modelFor !== S.m) {
+        const was = S.view;
+        await loadLib('three');
+        if (!view3d) { view3d = new View3D($('#glHost')); view3d.init(); }
+        view3d.setModel(S.m);
+        view3d.modelFor = S.m;
+        view3d.show(was === '3d');
+      }
+      download(`${s}.obj`, view3d.toOBJ(`${S.params.name} – L-stair designer`), 'text/plain');
+    } else if (kind === 'csv') download(`${s}_cutlist.csv`, cutCsv(), 'text/csv');
+    else if (kind === 'json') download(`${s}.json`, JSON.stringify(S.params, null, 2), 'application/json');
+  } catch (e) {
+    console.error(e);
+    toast(`Export failed: ${e.message}`);
+  } finally {
+    if (btn) btn.classList.remove('busy');
+  }
+}
+
+// ------------------------------------------------------------ converter
+function parseInches(raw) {
+  let s = String(raw).trim().replace(/[″”]/g, '"').replace(/[′’]/g, "'").replace(/,/g, '.');
+  if (!s) return null;
+  let ft = 0;
+  const mf = s.match(/^(\d+(?:\.\d+)?)\s*(?:'|ft)\s*(.*)$/i);
+  if (mf) { ft = Number(mf[1]); s = mf[2].trim(); }
+  s = s.replace(/("|in|inch|inches)$/i, '').trim();
+  let inch = 0;
+  if (s) {
+    const m = s.match(/^(?:(\d+(?:\.\d+)?)(?:[\s-]+|$))?(?:(\d+)\s*\/\s*(\d+))?$/);
+    if (!m || (m[1] === undefined && m[2] === undefined)) return null;
+    inch = (m[1] ? Number(m[1]) : 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+  }
+  return ft * 12 + inch;
+}
+function inchesText(mm) {
+  const inch = mm / 25.4;
+  let n16 = Math.round(inch * 16);
+  const whole = Math.floor(n16 / 16);
+  let fr = n16 % 16, den = 16;
+  while (fr && fr % 2 === 0) { fr /= 2; den /= 2; }
+  const ft = Math.floor(whole / 12), rem = whole % 12;
+  const frac = fr ? ` ${fr}/${den}` : '';
+  return ft ? `${ft}′ ${rem}${frac}″` : `${rem}${frac}″`;
+}
+function bindConverter() {
+  $('#convIn').addEventListener('input', (e) => {
+    const v = parseInches(e.target.value);
+    $('#convInOut').textContent = v === null ? (e.target.value.trim() ? 'not a length' : '–') : `${fmtDim(v * 25.4)} mm`;
+  });
+  $('#convMm').addEventListener('input', (e) => {
+    const v = Number(String(e.target.value).replace(',', '.'));
+    const out = $('#convMmOut');
+    out.textContent = e.target.value.trim() === '' ? '–' : Number.isFinite(v) ? inchesText(v) : 'not a number';
+    out.title = Number.isFinite(v) && e.target.value.trim() ? `${(v / 25.4).toFixed(3)} in` : '';
+  });
+}
+
+// ----------------------------------------------------------------- boot
+function bindChrome() {
+  $$('.preset').forEach((b) => b.addEventListener('click', () => loadParams(clone(PRESETS[b.dataset.preset]), `Loaded ${b.querySelector('b').textContent}`)));
+  $('#undo').addEventListener('click', undo);
+  $('#redo').addEventListener('click', redo);
+  $('#saveBtn').addEventListener('click', () => exportOne('json'));
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try { loadParams(JSON.parse(String(rd.result)), `Loaded ${f.name}`); } catch (err) { toast(`Could not read ${f.name}`); }
+      e.target.value = '';
+    };
+    rd.readAsText(f);
+  });
+  $$('[data-export]').forEach((b) => b.addEventListener('click', () => {
+    $('#exportMenu').open = false;
+    exportOne(b.dataset.export, b);
+  }));
+  document.addEventListener('click', (e) => {
+    const mnu = $('#exportMenu');
+    if (mnu.open && !mnu.contains(e.target)) mnu.open = false;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') $('#exportMenu').open = false;
+    const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement && document.activeElement.tagName);
+    if (typing || !(e.ctrlKey || e.metaKey)) return;
+    if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+  });
+  $('#tbVerdict').addEventListener('click', () => {
+    const panel = $('#rulesPanel');
+    if (panel.offsetParent !== null && getComputedStyle(panel).display !== 'none') {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      flash(panel);
+    } else setView('rules');
+  });
+  $('#fitBtn').addEventListener('click', () => canvasView && canvasView.fit());
+  $('#palBtn').addEventListener('click', () => {
+    S.dark = !S.dark;
+    store('darkPaper', S.dark);
+    $('#palBtn').textContent = S.dark ? 'Paper' : 'Dark';
+    if (canvasView) canvasView.paint();
+  });
+  for (const k of ['walls', 'walk']) {
+    $(`#gl_${k}`).addEventListener('click', () => {
+      if (!view3d) return;
+      view3d.opts[k] = !view3d.opts[k];
+      store('opts3d', view3d.opts);
+      view3d.applyOpts();
+      syncGlBar();
+    });
+  }
+  $$('[data-cam]').forEach((b) => b.addEventListener('click', () => view3d && view3d.view(b.dataset.cam)));
+  const themeChanged = () => {
+    if (canvasView) canvasView.paint();
+    if (view3d) view3d.setTheme(isDarkUI());
+  };
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged);
+}
+
+function boot() {
+  buildForm();
+  buildTabs();
+  bindChrome();
+  bindConverter();
+  const saved = stored('params');
+  S.params = normalize(saved || PRESETS.example);
+  S.dark = !!stored('darkPaper');
+  $('#palBtn').textContent = S.dark ? 'Paper' : 'Dark';
+  S.committed = JSON.stringify(S.params);
+  updateUndo();
+  syncForm();
+  const v = stored('view');
+  setView(VIEWS.some((x) => x.id === v) ? v : 'plan');
+  rebuild();
+}
+
+// exposed for tests and for tinkering in the console
+window.LStair = { compute, drawPlan, drawElevation, buildSheet, toDXF, toSVG, hlr, PRESETS, DEFAULTS, normalize, get state() { return S; }, exportOne };
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
+})();
+</script>
+</body>
+</html>
